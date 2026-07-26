@@ -1,0 +1,73 @@
+{
+  "schema": "aec_compile_report_v1",
+  "entry": "tiny",
+  "instruction_count": 5,
+  "aecbin_bytes": 80,
+  "headerless": true,
+  "instruction_width_bits": 128,
+  "registers": 3,
+  "predicates": 0,
+  "spills": 0,
+  "params": [
+    {
+      "type": "u64",
+      "name": "a",
+      "line": 5
+    },
+    {
+      "type": "u64",
+      "name": "b",
+      "line": 6
+    }
+  ],
+  "static_shared": {},
+  "used_extensions": [],
+  "diagnostics": [],
+  "instructions": [
+    {
+      "mnemonic": "LD",
+      "dst": 1,
+      "src1": 0,
+      "src2": 0,
+      "src3": 2,
+      "pred": 65535,
+      "comment": "ld.global.u32 %r1, [%r0+0]"
+    },
+    {
+      "mnemonic": "IADD.u32",
+      "dst": 2,
+      "src1": 1,
+      "src2": 7,
+      "src3": 0,
+      "pred": 65535,
+      "comment": "add.u32 %r2, %r1, 7"
+    },
+    {
+      "mnemonic": "ST",
+      "dst": 0,
+      "src1": 0,
+      "src2": 4,
+      "src3": 131074,
+      "pred": 65535,
+      "comment": "st.global.u32 [%r0+4], %r2"
+    },
+    {
+      "mnemonic": "HALT",
+      "dst": 0,
+      "src1": 0,
+      "src2": 0,
+      "src3": 0,
+      "pred": 65535,
+      "comment": "ret"
+    },
+    {
+      "mnemonic": "HALT",
+      "dst": 0,
+      "src1": 0,
+      "src2": 0,
+      "src3": 0,
+      "pred": 65535,
+      "comment": "implicit halt"
+    }
+  ]
+}

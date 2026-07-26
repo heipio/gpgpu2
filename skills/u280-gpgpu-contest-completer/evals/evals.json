@@ -1,0 +1,53 @@
+{
+  "skill_name": "u280-gpgpu-contest-completer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Audit a U280 GPGPU contest repository against contest.md before submission. Identify risks that could cause zero score, disqualification, or hidden-test failure, then give the shortest safe fix path.",
+      "expected_output": "A scoring-focused audit that checks fixed AEC-G ISA, runtime API, CPU fallback, compiler, RTL, tests, reports, bitstream, design.json, environment lock, hidden-test portability, and reproducibility.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We want a 4-CU, 8-lane starter design. Give a staged RTL/compiler/runtime/PyTorch implementation plan and the acceptance tests for each stage under the contest rules.",
+      "expected_output": "A staged plan preserving logical_warp_width=32, issue beats, SIMT semantics, memory paths, FP8 MMA/SFU, compiler flow, runtime API, PyTorch models, board evidence, environment compatibility, and scoring gates.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "ResNet-50 batch64 is fast on board, but hidden tests fail and runtime sometimes uses CPU fallback. Judge the scoring risk under contest.md and propose a debug route.",
+      "expected_output": "A rule-aware debug response identifying CPU fallback and hidden-test failure as scoring blockers, then proposing fallback logs, runtime traces, model op tracing, differential tests, state reset checks, and fixes.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "LLM public prompts pass individually, but token match drops to zero after running multiple prompts in a row. Also, the latency scheduler merges requests into a batch. Explain the contest risks and fixes.",
+      "expected_output": "A diagnosis that flags stale KV cache/input-derived state and latency-mode dynamic batching as scoring blockers, requires state reset logs, KV-cache clearing, queue_depth=1 latency scheduling, static-only throughput batching, EOS denominator handling, and regression tests.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Review this U280 architecture sketch: one HBM AXI master, DDR4 unused, three CUs across SLRs share one large SFU, RCP/EXP2 are combinational Taylor expansions, and reports only show total card utilization. What contest risks exist?",
+      "expected_output": "A review that flags HBM serialization, missing DDR4 capacity-tier policy, lack of per-SLR utilization review, missing cross-SLR pipelining/register slices, and risky SFU implementation; recommends HBM pseudo-channel striping, explicit HBM/DDR placement, per-SLR reports, cross-SLR pipeline stages, and LUT/interpolation/Newton SFU design.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "During system integration, runtime passes 64-bit device pointers but RTL LD/ST keeps only low 32 bits; BRX only executes the taken path; BAR.SYNC expected_warps=0 waits for launch-time warp count; multiple CUs share an SFU without tags; and the team wants to start sparse GEMM bonus now. Identify fatal issues and priority fixes.",
+      "expected_output": "A system-integration review that treats pointer truncation, incomplete BRX reconvergence, wrong dynamic barrier semantics, untagged shared SFU writeback, missing FENCE/cache responsibility, and premature bonus work as scoring blockers; it should prescribe address-window/base-table translation, SSY/SYNC stack tests, dynamic active-warp tracking, ready/valid SFU arbitration with tags, FENCE subop=0/1 plus flush/invalidate tests, and baseline-gates-before-bonus sequencing.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Review this late-stage LLM/RTL submission: decode returns full logits and CPU does argmax, EOS stops individual sequences early, MAD.f32 reuses FMA, inactive lanes still update predicate registers, dynamic_smem_bytes is ignored, and timing has WNS=-0.08 ns but board smoke tests pass. What must be fixed before submission?",
+      "expected_output": "A submission-blocking review that requires on-device LLM argmax with smallest-token tie break, EOS padding through batch*128 positions, MAD double-rounding distinct from FMA, inactive-lane write masking, dynamic shared-memory ABI mapping and capacity checks, WNS >= 0 on all scoring clocks, and audit logs proving fallback legality and state clearing.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "I have local U280.md and usage.md plus a remote account. Help me run board smoke tests and collect evidence, but keep the contest.md environment constraints intact.",
+      "expected_output": "A local-run response that uses the U280 runbook for SSH/P2P, setup_u280.sh, xbutil examine/validate, connectivity.cfg HBM mapping, sw_emu/hw runs, xclbin loading, timing/power evidence, and version-mismatch notes, while refusing to persist passwords, tokens, or secret keys in files/logs and preserving the official contest environment lock for final submission.",
+      "files": []
+    }
+  ]
+}
