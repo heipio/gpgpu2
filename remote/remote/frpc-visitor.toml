@@ -1,0 +1,39 @@
+# ============================================
+# frpc-visitor-multi.toml - 同时访问多台内网服务器的访问端配�?# 运行后本机会监听 2222 �?2223 两个本地端口
+# ============================================
+
+serverAddr = "<FRP_SERVER_ADDR>"
+serverPort = 7000
+
+auth.method = "token"
+auth.token = "<FRP_AUTH_TOKEN>"
+
+transport.tls.enable = true
+
+log.to = "./frpc-visitor-multi.log"
+log.level = "info"
+log.maxDays = 30
+log.disablePrintColor = false
+
+# ============================================
+# 访问者配�?# ============================================
+
+# ---- 第一台内网服务器 ----
+[[visitors]]
+name = "ssh-p2p-visitor"
+type = "xtcp"
+serverName = "ssh-p2p"
+secretKey = "<FRP_SECRET_KEY>"
+bindAddr = "127.0.0.1"
+bindPort = 2222
+keepTunnelOpen = false
+
+# ---- 第二台内网服务器 ----
+[[visitors]]
+name = "ssh-p2p-server2-visitor"
+type = "xtcp"
+serverName = "ssh-p2p-server2"
+secretKey = "<FRP_SECRET_KEY>"
+bindAddr = "127.0.0.1"
+bindPort = 2223
+keepTunnelOpen = false

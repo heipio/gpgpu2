@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.log
 
 build/
 dist/
@@ -12,3 +13,5 @@ dist/
 
 .DS_Store
 Thumbs.db
+__MACOSX/
+._*
