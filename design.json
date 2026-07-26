@@ -1,0 +1,120 @@
+{
+  "schema": "aec_g_design_v0",
+  "status": "pre_rtl_readiness",
+  "isa": {
+    "name": "AEC-G",
+    "version": "1.0",
+    "instruction_width_bits": 128,
+    "aecbin_headerless": true,
+    "logical_warp_width": 32,
+    "numeric_modes": [
+      "fp8_e4m3fn",
+      "f32"
+    ],
+    "optional_numeric_modes": {
+      "e5m2": false
+    },
+    "subnormal_behavior": "E4M3FN subnormals supported in golden model; RTL must match or capability must explicitly declare FTZ",
+    "nan_behavior": "canonical NaN for generated NaNs unless an instruction explicitly preserves payload"
+  },
+  "microarchitecture_plan": {
+    "cu_count_target": 2,
+    "cu_count_reference_scale": 4,
+    "physical_simd_lanes": 8,
+    "issue_beats_per_warp": 4,
+    "resident_warps_per_cu_initial": 4,
+    "shared_memory_bytes_per_cu_initial": 16384,
+    "l1_bytes_per_cu_initial": 16384,
+    "l2_bytes_initial": 1048576,
+    "frequency_mhz_baseline": 180,
+    "frequency_mhz_target": 200
+  },
+  "memory": {
+    "address_window_bits": 32,
+    "runtime_pointer_bits": 64,
+    "pointer_truncation_allowed": false,
+    "hbm_bank_count": 32,
+    "ddr_bank_count": 2,
+    "placement_policy": "HBM for hot activations/KV/tensor tiles/command queues; DDR4 capacity tier for cold weights, datasets, overflow, staging",
+    "minimum_hbm_ports_for_rtl": 4,
+    "target_hbm_ports": "8-16",
+    "unaligned_policy": "trap MISALIGNED_ACCESS unless split support is implemented consistently"
+  },
+  "runtime_capability": {
+    "requires_capability_check_before_module_load": true,
+    "unsupported_feature_error": "AEC_ERROR_UNSUPPORTED_FEATURE",
+    "cache_coherence_policy": "runtime soft/MMIO fence at H2D, launch, synchronize, and D2H boundaries until RTL exposes final register map",
+    "fence_subops": {
+      "0": "CTA",
+      "1": "DEVICE"
+    }
+  },
+  "compiler": {
+    "ptx_subset": "restricted PTX 9.3 seed subset",
+    "b128_base_isa": "lower to legal b32/b64 LD/ST; no base b128 emission",
+    "anti_hardcode_policy": "no kernel/model/shape/hash/fingerprint replacement with precompiled outputs"
+  },
+  "verification": {
+    "local_tests": [
+      "test_sim.py",
+      "test_compiler.py",
+      "test_sim_ctrl.py",
+      "test_differential.py"
+    ],
+    "remote_python36_validated": true,
+    "next_rtl_trace_contract": [
+      "pc",
+      "active_mask",
+      "predicate_writes",
+      "gpr_writes",
+      "memory_writes",
+      "faults"
+    ]
+  },
+  "official_environment_lock": {
+    "os": "CentOS Linux 7.9",
+    "glibc": "2.17",
+    "vivado_vitis": "2022.2 required for final submission evidence",
+    "xrt": "2.13.479",
+    "platform": "U280 Gen3x16 XDMA base_1"
+  },
+  "local_environment_risk": "Remote notes mention Vitis/Vivado 2023.1; treat as local development convenience only and rebuild final evidence with official 2022.2-compatible flow.",
+  "logical_warp_width": 32,
+  "physical_simd_lanes": 8,
+  "issue_beats_per_warp": 4,
+  "cu": {
+    "initial_target": 2,
+    "reference_scale": 4
+  },
+  "cu_count": 2,
+  "cache": {
+    "l1_per_cu_bytes": 16384,
+    "l2_initial_bytes": 1048576,
+    "policy": "write-through/uncached until RTL coherence is implemented"
+  },
+  "cache_sizes": {
+    "l1d_bytes_per_cu": 16384,
+    "shared_bytes_per_cu": 16384,
+    "l2_bytes": 1048576
+  },
+  "gemm": {
+    "baseline_tile": "m16n16k16",
+    "input": "fp8_e4m3fn",
+    "accumulator": "f32"
+  },
+  "gemm_tiles": {
+    "logical_tile": "m16n16k16",
+    "initial_full_card_tiles": 2,
+    "target_full_card_tiles": 4
+  },
+  "frequency": {
+    "baseline_mhz": 180,
+    "target_mhz": 200
+  },
+  "numeric_mode": "fp8_e4m3fn+f32",
+  "numeric_modes": [
+    "fp8_e4m3fn",
+    "f32"
+  ],
+  "driver_version": "pre_xdma_driver_skeleton"
+}

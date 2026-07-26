@@ -109,3 +109,4 @@ if __name__ == "__main__":
         if name.startswith("test_") and callable(fn):
             fn()
     print("AEC-G simulator numeric tests passed")
+

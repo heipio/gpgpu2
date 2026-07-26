@@ -6,20 +6,64 @@
     "endianness": "little",
     "file_format": ".aecbin is exactly four 32-bit little-endian words per instruction and has no file header",
     "word_fields": {
-      "w0": {"bits": "31:0", "fields": ["opcode", "subop", "predicate", "dst"]},
-      "w1": {"bits": "63:32", "fields": ["src0", "src1", "src2", "immediate_low"]},
-      "w2": {"bits": "95:64", "fields": ["immediate_high", "memory_space", "memory_width", "rounding_mode"]},
-      "w3": {"bits": "127:96", "fields": ["control", "barrier", "fault_policy", "reserved_zero"]}
+      "w0": {
+        "bits": "31:0",
+        "fields": [
+          "src3_or_immext"
+        ]
+      },
+      "w1": {
+        "bits": "63:32",
+        "fields": [
+          "src2_or_imm32"
+        ]
+      },
+      "w2": {
+        "bits": "95:64",
+        "fields": [
+          "src1",
+          "dst"
+        ]
+      },
+      "w3": {
+        "bits": "127:96",
+        "fields": [
+          "opcode",
+          "pred_ctrl"
+        ]
+      }
+    },
+    "bit_fields": {
+      "opcode": "127:112",
+      "pred_ctrl": "111:96",
+      "dst": "95:80",
+      "src1": "79:64",
+      "src2_or_imm32": "63:32",
+      "src3_or_immext": "31:0"
     }
   },
   "numeric_modes": {
-    "f32": {"rounding": "IEEE-754 round-to-nearest-even unless instruction states otherwise", "nan": "canonical quiet NaN 0x7fc00000 for generated NaNs"},
+    "f32": {
+      "rounding": "IEEE-754 round-to-nearest-even unless instruction states otherwise",
+      "nan": "canonical quiet NaN 0x7fc00000 for generated NaNs"
+    },
     "fp8_e4m3fn": {
-      "bits": {"sign": "7", "exponent": "6:3", "fraction": "2:0"},
+      "bits": {
+        "sign": "7",
+        "exponent": "6:3",
+        "fraction": "2:0"
+      },
       "bias": 7,
       "max_finite": 448.0,
       "min_positive_subnormal": 0.001953125,
-      "specials": {"nan_encodings": ["0x7f", "0xff"], "canonical_nan": "0x7f", "infinity": "not encoded"},
+      "specials": {
+        "nan_encodings": [
+          "0x7f",
+          "0xff"
+        ],
+        "canonical_nan": "0x7f",
+        "infinity": "not encoded"
+      },
       "conversion": {
         "float_to_fp8": "round-to-nearest-even; overflow saturates to signed max finite 0x7e/0xfe; NaN canonicalizes to 0x7f; signed zero is preserved",
         "fp8_to_float": "exp=0 decodes as signed subnormal/zero; exp=15 frac=7 decodes as NaN; all other encodings decode as finite"
@@ -28,15 +72,52 @@
   },
   "register_file": {
     "logical_warp_width": 32,
-    "gpr": {"count": 256, "width_bits": 32, "names": "R0..R255", "lane_private": true, "zero_register": null},
-    "predicate": {"count": 8, "width_bits": 1, "names": "P0..P7", "lane_private": true, "PT": "always true pseudo-predicate"},
+    "gpr": {
+      "count": 256,
+      "width_bits": 32,
+      "names": "R0..R255",
+      "lane_private": true,
+      "zero_register": null
+    },
+    "predicate": {
+      "count": 8,
+      "width_bits": 1,
+      "names": "P0..P7",
+      "lane_private": true,
+      "PT": "always true pseudo-predicate"
+    },
     "special": [
-      {"name": "SR_LANEID", "width_bits": 32, "read_only": true, "value": "logical lane id 0..31"},
-      {"name": "SR_WARPID", "width_bits": 32, "read_only": true},
-      {"name": "SR_CTAID_X", "width_bits": 32, "read_only": true},
-      {"name": "SR_NCTAID_X", "width_bits": 32, "read_only": true},
-      {"name": "SR_ACTIVE_MASK", "width_bits": 32, "read_only": true},
-      {"name": "SR_CAP_BASE", "width_bits": 32, "read_only": true}
+      {
+        "name": "SR_LANEID",
+        "width_bits": 32,
+        "read_only": true,
+        "value": "logical lane id 0..31"
+      },
+      {
+        "name": "SR_WARPID",
+        "width_bits": 32,
+        "read_only": true
+      },
+      {
+        "name": "SR_CTAID_X",
+        "width_bits": 32,
+        "read_only": true
+      },
+      {
+        "name": "SR_NCTAID_X",
+        "width_bits": 32,
+        "read_only": true
+      },
+      {
+        "name": "SR_ACTIVE_MASK",
+        "width_bits": 32,
+        "read_only": true
+      },
+      {
+        "name": "SR_CAP_BASE",
+        "width_bits": 32,
+        "read_only": true
+      }
     ],
     "alignment_rules": {
       "b64_scalar": "uses even-aligned register pair {Rk+1,Rk}; k must be even",
@@ -51,50 +132,306 @@
     "address_register_width_bits": 32,
     "runtime_pointer_width_bits": 64,
     "translation": "runtime must map 64-bit device pointers through buffer/window metadata; truncating 64-bit pointers is illegal",
-    "spaces": ["global", "shared", "const", "local"],
-    "base_widths": [8, 16, 32, 64],
+    "spaces": [
+      "global",
+      "shared",
+      "const",
+      "local"
+    ],
+    "base_widths": [
+      8,
+      16,
+      32,
+      64
+    ],
     "unaligned_policy": "trap with MISALIGNED_ACCESS unless a compiler/runtime capability declares correct split handling",
-    "fence": {"subop_0": "CTA scope", "subop_1": "DEVICE scope"}
+    "fence": {
+      "subop_0": "CTA scope",
+      "subop_1": "DEVICE scope"
+    }
   },
   "opcodes": [
-    {"mnemonic": "NOP", "opcode": "0x00", "operands": [], "semantics": "no architectural state change"},
-    {"mnemonic": "MOV", "opcode": "0x01", "operands": ["Rd", "Ra|imm"], "semantics": "copy source to destination under active predicate"},
-    {"mnemonic": "IADD.u32", "opcode": "0x02", "operands": ["Rd", "Ra", "Rb|imm"], "semantics": "32-bit wrapping integer add"},
-    {"mnemonic": "IMUL.u32", "opcode": "0x03", "operands": ["Rd", "Ra", "Rb|imm"], "semantics": "low 32 bits of unsigned product"},
-    {"mnemonic": "FADD.f32", "opcode": "0x04", "operands": ["Rd", "Ra", "Rb"], "semantics": "FP32 add"},
-    {"mnemonic": "FMUL.f32", "opcode": "0x05", "operands": ["Rd", "Ra", "Rb"], "semantics": "FP32 multiply"},
-    {"mnemonic": "MAD.f32", "opcode": "0x06", "operands": ["Rd", "Ra", "Rb", "Rc"], "semantics": "multiply rounded to FP32, then add rounded to FP32"},
-    {"mnemonic": "FMA.f32", "opcode": "0x07", "operands": ["Rd", "Ra", "Rb", "Rc"], "semantics": "single-rounding fused multiply-add where implementation supports it"},
-    {"mnemonic": "SETP", "opcode": "0x08", "operands": ["Pd", "cmp", "Ra", "Rb"], "semantics": "set lane-private predicate under active mask"},
-    {"mnemonic": "CMPP", "opcode": "0x09", "operands": ["Pd", "cmp", "Ra", "Rb"], "semantics": "floating-point compare; generated NaNs are canonical"},
-    {"mnemonic": "LD", "opcode": "0x10", "operands": ["Rd", "space", "addr", "width"], "semantics": "load b8/b16/b32/b64; b64 writes even pair"},
-    {"mnemonic": "ST", "opcode": "0x11", "operands": ["space", "addr", "Rs", "width"], "semantics": "store b8/b16/b32/b64; b64 reads even pair"},
-    {"mnemonic": "FENCE", "opcode": "0x12", "operands": ["subop"], "semantics": "subop 0 CTA scope, subop 1 device scope"},
-    {"mnemonic": "BRA", "opcode": "0x20", "operands": ["target"], "semantics": "uniform branch"},
-    {"mnemonic": "BRX", "opcode": "0x21", "operands": ["predicate", "target"], "semantics": "divergent branch executes taken and fall-through masks with reconvergence"},
-    {"mnemonic": "SSY", "opcode": "0x22", "operands": ["reconv_pc"], "semantics": "push reconvergence token"},
-    {"mnemonic": "SYNC", "opcode": "0x23", "operands": [], "semantics": "pop reconvergence token or raise SIMT_STACK_FAULT"},
-    {"mnemonic": "BAR.SYNC", "opcode": "0x24", "operands": ["barrier_id", "expected_warps"], "semantics": "expected_warps=0 synchronizes all currently non-halted warps in CTA"},
-    {"mnemonic": "SHFL", "opcode": "0x30", "operands": ["Rd", "Ra", "src_lane"], "semantics": "logical warp shuffle across all 32 lanes, independent of physical issue beats"},
-    {"mnemonic": "REDUCE.ADD.f32", "opcode": "0x31", "operands": ["Rd", "Ra"], "semantics": "balanced binary tree over ascending logical lane IDs, steps 1,2,4,..."},
-    {"mnemonic": "SFU.RCP.f32", "opcode": "0x40", "operands": ["Rd", "Ra"], "precision": "max relative error <= 2^-10", "specials": "+/-0 -> +/-Inf; +/-Inf -> +/-0; NaN -> canonical NaN"},
-    {"mnemonic": "SFU.EXP2.f32", "opcode": "0x41", "operands": ["Rd", "Ra"], "precision": "max relative error <= 2^-9 in normal result range", "specials": "overflow -> +Inf; underflow -> +0; NaN -> canonical NaN"},
-    {"mnemonic": "MMA.m16n16k16.e4m3.f32", "opcode": "0x50", "operands": ["Dbase", "Abase", "Bbase", "Cbase"], "semantics": "D[m,n] = C[m,n] + sum k=0..15 fp32(fp8(A[m,k]))*fp32(fp8(B[k,n])) in exact ascending k order"},
-    {"mnemonic": "HALT", "opcode": "0x7f", "operands": [], "semantics": "mark warp complete"}
+    {
+      "mnemonic": "NOP",
+      "opcode": "0x00",
+      "operands": [],
+      "semantics": "no architectural state change"
+    },
+    {
+      "mnemonic": "MOV",
+      "opcode": "0x01",
+      "operands": [
+        "Rd",
+        "Ra|imm"
+      ],
+      "semantics": "copy source to destination under active predicate"
+    },
+    {
+      "mnemonic": "IADD.u32",
+      "opcode": "0x02",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "32-bit wrapping integer add"
+    },
+    {
+      "mnemonic": "IMUL.u32",
+      "opcode": "0x03",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "low 32 bits of unsigned product"
+    },
+    {
+      "mnemonic": "FADD.f32",
+      "opcode": "0x04",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb"
+      ],
+      "semantics": "FP32 add"
+    },
+    {
+      "mnemonic": "FMUL.f32",
+      "opcode": "0x05",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb"
+      ],
+      "semantics": "FP32 multiply"
+    },
+    {
+      "mnemonic": "MAD.f32",
+      "opcode": "0x06",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb",
+        "Rc"
+      ],
+      "semantics": "multiply rounded to FP32, then add rounded to FP32"
+    },
+    {
+      "mnemonic": "FMA.f32",
+      "opcode": "0x07",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb",
+        "Rc"
+      ],
+      "semantics": "single-rounding fused multiply-add where implementation supports it"
+    },
+    {
+      "mnemonic": "SETP",
+      "opcode": "0x08",
+      "operands": [
+        "Pd",
+        "cmp",
+        "Ra",
+        "Rb"
+      ],
+      "semantics": "set lane-private predicate under active mask"
+    },
+    {
+      "mnemonic": "CMPP",
+      "opcode": "0x09",
+      "operands": [
+        "Pd",
+        "cmp",
+        "Ra",
+        "Rb"
+      ],
+      "semantics": "floating-point compare; generated NaNs are canonical"
+    },
+    {
+      "mnemonic": "LD",
+      "opcode": "0x10",
+      "operands": [
+        "Rd",
+        "space",
+        "addr",
+        "width"
+      ],
+      "semantics": "load b8/b16/b32/b64; b64 writes even pair"
+    },
+    {
+      "mnemonic": "ST",
+      "opcode": "0x11",
+      "operands": [
+        "space",
+        "addr",
+        "Rs",
+        "width"
+      ],
+      "semantics": "store b8/b16/b32/b64; b64 reads even pair"
+    },
+    {
+      "mnemonic": "FENCE",
+      "opcode": "0x12",
+      "operands": [
+        "subop"
+      ],
+      "semantics": "subop 0 CTA scope, subop 1 device scope"
+    },
+    {
+      "mnemonic": "BRA",
+      "opcode": "0x20",
+      "operands": [
+        "target"
+      ],
+      "semantics": "uniform branch"
+    },
+    {
+      "mnemonic": "BRX",
+      "opcode": "0x21",
+      "operands": [
+        "predicate",
+        "target"
+      ],
+      "semantics": "divergent branch executes taken and fall-through masks with reconvergence"
+    },
+    {
+      "mnemonic": "SSY",
+      "opcode": "0x22",
+      "operands": [
+        "reconv_pc"
+      ],
+      "semantics": "push reconvergence token"
+    },
+    {
+      "mnemonic": "SYNC",
+      "opcode": "0x23",
+      "operands": [],
+      "semantics": "pop reconvergence token or raise SIMT_STACK_FAULT"
+    },
+    {
+      "mnemonic": "BAR.SYNC",
+      "opcode": "0x24",
+      "operands": [
+        "barrier_id",
+        "expected_warps"
+      ],
+      "semantics": "expected_warps=0 synchronizes all currently non-halted warps in CTA"
+    },
+    {
+      "mnemonic": "SHFL",
+      "opcode": "0x30",
+      "operands": [
+        "Rd",
+        "Ra",
+        "src_lane"
+      ],
+      "semantics": "logical warp shuffle across all 32 lanes, independent of physical issue beats"
+    },
+    {
+      "mnemonic": "REDUCE.ADD.f32",
+      "opcode": "0x31",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "semantics": "balanced binary tree over ascending logical lane IDs, steps 1,2,4,..."
+    },
+    {
+      "mnemonic": "SFU.RCP.f32",
+      "opcode": "0x40",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "precision": "max relative error <= 2^-10",
+      "specials": "+/-0 -> +/-Inf; +/-Inf -> +/-0; NaN -> canonical NaN"
+    },
+    {
+      "mnemonic": "SFU.EXP2.f32",
+      "opcode": "0x41",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "precision": "max relative error <= 2^-9 in normal result range",
+      "specials": "overflow -> +Inf; underflow -> +0; NaN -> canonical NaN"
+    },
+    {
+      "mnemonic": "MMA.m16n16k16.e4m3.f32",
+      "opcode": "0x50",
+      "operands": [
+        "Dbase",
+        "Abase",
+        "Bbase",
+        "Cbase"
+      ],
+      "semantics": "D[m,n] = C[m,n] + sum k=0..15 fp32(fp8(A[m,k]))*fp32(fp8(B[k,n])) in exact ascending k order"
+    },
+    {
+      "mnemonic": "HALT",
+      "opcode": "0x7f",
+      "operands": [],
+      "semantics": "mark warp complete"
+    }
   ],
   "mma_fragments": {
     "MMA.m16n16k16.e4m3.f32": {
       "logical_lanes": 32,
-      "a_fragment": {"registers_per_lane": 4, "base_alignment": 2, "packing": "each 32-bit register holds four FP8 values, byte 0 lowest k", "mapping": "lane l owns rows floor(l/2) and floor(l/2)+8; registers cover k groups 0..3,4..7,8..11,12..15 for those rows"},
-      "b_fragment": {"registers_per_lane": 4, "base_alignment": 2, "packing": "each 32-bit register holds four FP8 values", "mapping": "lane l owns cols (l%16) and (l%16)+16 modulo 16 aliasing to the 16 visible columns; registers cover k groups 0..3,4..7,8..11,12..15"},
-      "c_fragment": {"registers_per_lane": 8, "base_alignment": 8, "packing": "one FP32 accumulator per register", "mapping": "lane l owns eight C/D elements in row-major groups; global element index = l*8+i over 256 outputs"},
-      "d_fragment": {"registers_per_lane": 8, "base_alignment": 8, "packing": "one FP32 result per register", "mapping": "same as c_fragment"},
+      "a_fragment": {
+        "registers_per_lane": 4,
+        "base_alignment": 2,
+        "packing": "each 32-bit register holds four FP8 values, byte 0 lowest k",
+        "mapping": "lane l owns rows floor(l/2) and floor(l/2)+8; registers cover k groups 0..3,4..7,8..11,12..15 for those rows"
+      },
+      "b_fragment": {
+        "registers_per_lane": 4,
+        "base_alignment": 2,
+        "packing": "each 32-bit register holds four FP8 values",
+        "mapping": "lane l owns cols (l%16) and (l%16)+16 modulo 16 aliasing to the 16 visible columns; registers cover k groups 0..3,4..7,8..11,12..15"
+      },
+      "c_fragment": {
+        "registers_per_lane": 8,
+        "base_alignment": 8,
+        "packing": "one FP32 accumulator per register",
+        "mapping": "lane l owns eight C/D elements in row-major groups; global element index = l*8+i over 256 outputs"
+      },
+      "d_fragment": {
+        "registers_per_lane": 8,
+        "base_alignment": 8,
+        "packing": "one FP32 result per register",
+        "mapping": "same as c_fragment"
+      },
       "accumulation_order": "for each output element, execute k=0,1,...,15; do not reassociate or tree-reduce"
     }
   },
-  "faults": ["ILLEGAL_INSTRUCTION", "MISALIGNED_ACCESS", "ADDRESS_ERROR", "SIMT_STACK_FAULT", "BARRIER_DEADLOCK", "WATCHDOG_TIMEOUT", "UNSUPPORTED_FEATURE"],
+  "faults": [
+    "ILLEGAL_INSTRUCTION",
+    "MISALIGNED_ACCESS",
+    "ADDRESS_ERROR",
+    "SIMT_STACK_FAULT",
+    "BARRIER_DEADLOCK",
+    "WATCHDOG_TIMEOUT",
+    "UNSUPPORTED_FEATURE"
+  ],
   "capability_registers": {
-    "required": ["isa_version", "logical_warp_width", "physical_simd_lanes", "issue_beats_per_warp", "numeric_modes", "memory_spaces", "sfu_rcp", "sfu_exp2", "mma_m16n16k16_e4m3_f32", "max_gpr", "max_predicates", "shared_memory_bytes", "address_window_bits"],
+    "required": [
+      "isa_version",
+      "logical_warp_width",
+      "physical_simd_lanes",
+      "issue_beats_per_warp",
+      "numeric_modes",
+      "memory_spaces",
+      "sfu_rcp",
+      "sfu_exp2",
+      "mma_m16n16k16_e4m3_f32",
+      "max_gpr",
+      "max_predicates",
+      "shared_memory_bytes",
+      "address_window_bits"
+    ],
     "unsupported_feature_error": "AEC_ERROR_UNSUPPORTED_FEATURE"
   },
   "inactive_lane_rule": "lanes disabled by active mask or predicate do not modify GPRs, predicates, memory, counters, or exception state"
