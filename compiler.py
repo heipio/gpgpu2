@@ -24,14 +24,24 @@ MAX_GPRS = 256
 MAX_PREDS = 8
 
 OPCODES = {
-    "NOP": 0x00, "MOV": 0x01, "IADD.u32": 0x02, "IMUL.u32": 0x03,
-    "FADD.f32": 0x04, "FMUL.f32": 0x05, "MAD.f32": 0x06, "FMA.f32": 0x07,
-    "SETP": 0x08, "LD": 0x10, "ST": 0x11, "FENCE": 0x12,
-    "BRA": 0x20, "BRX": 0x21, "BAR.SYNC": 0x24,
-    "SFU.RCP.f32": 0x40, "SFU.EXP2.f32": 0x41,
-    "MMA.m16n16k16.e4m3.f32": 0x50, "HALT": 0x7F,
+    "ADD": 0x01, "IADD.u32": 0x01, "FADD.f32": 0x01,
+    "SUB.u32": 0x02,
+    "MUL": 0x03, "IMUL.u32": 0x03, "FMUL.f32": 0x03,
+    "MAD.f32": 0x04, "FMA.f32": 0x05,
+    "AND.b32": 0x10, "OR.b32": 0x11, "XOR.b32": 0x12,
+    "SHL.b32": 0x14, "SHR.b32": 0x15,
+    "SETP": 0x20, "CMPP": 0x21,
+    "LD": 0x30, "ST": 0x31, "FENCE": 0x34,
+    "BRA": 0x40, "BRX": 0x41, "SSY": 0x42, "SYNC": 0x43,
+    "BAR.SYNC": 0x44, "HALT": 0x45,
+    "MOV": 0x54, "CPY": 0x54, "LOADI": 0x55,
+    "SHFL": 0x60, "REDUCE.ADD.f32": 0x61,
+    "MMA.m16n16k16.e4m3.f32": 0x70,
+    "SFU.RCP.f32": 0x80, "SFU.EXP2.f32": 0x80,
+    "NOP": 0xF0,
 }
-SPACE = {"global": 0, "shared": 1, "const": 2, "local": 3, "param": 4}
+SPACE = {"global": 0, "gmem": 0, "param": 1, "pmem": 1, "shared": 2, "smem": 2,
+         "local": 3, "lmem": 3, "const": 4, "cmem": 4}
 WIDTH = {8: 0, 16: 1, 32: 2, 64: 3}
 CMP = {"eq": 0, "ne": 1, "lt": 2, "le": 3, "gt": 4, "ge": 5}
 
@@ -174,12 +184,14 @@ class RegAlloc(object):
         self.next_gpr += need
         return reg
 
-    def pred(self, name):
+    def pred_index(self, name):
         if not name:
-            return 0xFFFF
+            return 0
         name = name.strip().lstrip("%")
+        if name.startswith("!"):
+            name = name[1:].lstrip("%")
         if name.lower() == "pt":
-            return 0xFFFF
+            return 0
         if name in self.preds:
             return self.preds[name]
         if self.next_pred >= MAX_PREDS:
@@ -189,9 +201,22 @@ class RegAlloc(object):
         self.next_pred += 1
         return val
 
+    def guard(self, name):
+        if not name:
+            return 0
+        raw = name.strip()
+        negate = raw.startswith("!")
+        idx = self.pred_index(raw)
+        if raw.lstrip("!").lstrip("%").lower() == "pt":
+            return 0
+        return (1 << 15) | ((1 if negate else 0) << 14) | (idx & 0x7)
+
+    def pred(self, name):
+        return self.pred_index(name)
+
 
 class AECInstruction(object):
-    def __init__(self, mnemonic, dst=0, src1=0, src2=0, src3=0, pred=0xFFFF, comment=""):
+    def __init__(self, mnemonic, dst=0, src1=0, src2=0, src3=0, pred=0, comment=""):
         self.mnemonic = mnemonic
         self.opcode = OPCODES[mnemonic]
         self.dst, self.src1 = dst & 0xFFFF, src1 & 0xFFFF
@@ -234,11 +259,11 @@ class Lowerer(object):
         self.emit("HALT", comment="implicit halt")
         return self.out
 
-    def emit(self, mnemonic, dst=0, src1=0, src2=0, src3=0, pred=0xFFFF, comment=""):
+    def emit(self, mnemonic, dst=0, src1=0, src2=0, src3=0, pred=0, comment=""):
         self.out.append(AECInstruction(mnemonic, dst, src1, src2, src3, pred, comment))
 
     def one(self, inst):
-        pred = self.ra.pred(inst.pred)
+        pred = self.ra.guard(inst.pred)
         try:
             op = inst.op
             if op in ("ret", "exit"):
@@ -249,6 +274,18 @@ class Lowerer(object):
                 self.binary(inst, pred, "IADD.u32")
             elif op in ("mul.lo.u32", "mul.lo.s32"):
                 self.binary(inst, pred, "IMUL.u32")
+            elif op in ("sub.u32", "sub.s32"):
+                self.binary(inst, pred, "SUB.u32")
+            elif op in ("and.b32", "and.u32"):
+                self.binary(inst, pred, "AND.b32")
+            elif op in ("or.b32", "or.u32"):
+                self.binary(inst, pred, "OR.b32")
+            elif op in ("xor.b32", "xor.u32"):
+                self.binary(inst, pred, "XOR.b32")
+            elif op in ("shl.b32", "shl.u32"):
+                self.binary(inst, pred, "SHL.b32")
+            elif op in ("shr.u32", "shr.b32"):
+                self.binary(inst, pred, "SHR.b32")
             elif op == "add.f32":
                 self.binary(inst, pred, "FADD.f32")
             elif op == "mul.f32":
@@ -265,16 +302,16 @@ class Lowerer(object):
                 self.setp(inst, pred)
             elif op == "bra" or op.startswith("bra."):
                 idx = len(self.out)
-                self.emit("BRA" if pred == 0xFFFF else "BRX", pred=pred, comment=inst.text)
+                self.emit("BRA" if not inst.pred else "BRX", pred=pred, comment=inst.text)
                 self.fixups.append((idx, inst.operands[0]))
             elif op == "bar.sync":
                 bid = int(inst.operands[0], 0)
                 expected = int(inst.operands[1], 0) if len(inst.operands) > 1 else 0
                 self.emit("BAR.SYNC", src1=bid, src2=expected, pred=pred, comment=inst.text)
             elif op in ("rcp.approx.f32", "rcp.rn.f32"):
-                self.unary(inst, pred, "SFU.RCP.f32")
+                self.unary(inst, pred | (0 << 8), "SFU.RCP.f32")
             elif op in ("ex2.approx.f32", "ex2.rn.f32"):
-                self.unary(inst, pred, "SFU.EXP2.f32")
+                self.unary(inst, pred | (1 << 8), "SFU.EXP2.f32")
             elif op.startswith("mma."):
                 self.mma(inst, pred)
             else:
@@ -284,10 +321,13 @@ class Lowerer(object):
 
     def mov(self, inst, pred):
         check_n(inst, 2)
-        dst = self.ra.gpr(inst.operands[0], width_from_op(inst.op))
+        width = width_from_op(inst.op)
+        dst = self.ra.gpr(inst.operands[0], width)
         src = operand(inst.operands[1], self.ra)
-        self.emit("MOV", dst=dst, src1=src[1] if src[0] == "reg" else 0xFFFF,
-                  src2=src[1] if src[0] == "imm" else 0, pred=pred, comment=inst.text)
+        self.emit("LOADI" if src[0] == "imm" else "MOV", dst=dst, src1=src[1] if src[0] == "reg" else 0xFFFF,
+                  src2=src[1] if src[0] == "imm" else 0,
+                  pred=pred | type_pred_ctrl(inst.op) | ((1 << 7) if src[0] == "imm" else 0),
+                  comment=inst.text)
 
     def binary(self, inst, pred, mnem):
         check_n(inst, 3)
@@ -295,23 +335,25 @@ class Lowerer(object):
         src2 = operand(inst.operands[2], self.ra)
         self.emit(mnem, dst=self.ra.gpr(inst.operands[0], width),
                   src1=self.ra.gpr(inst.operands[1], width), src2=src2[1],
-                  src3=1 if src2[0] == "reg" else 0, pred=pred, comment=inst.text)
+                  pred=pred | type_pred_ctrl(inst.op) | ((1 << 7) if src2[0] == "imm" else 0),
+                  comment=inst.text)
 
     def ternary(self, inst, pred, mnem):
         check_n(inst, 4)
         self.emit(mnem, self.ra.gpr(inst.operands[0]), self.ra.gpr(inst.operands[1]),
-                  self.ra.gpr(inst.operands[2]), self.ra.gpr(inst.operands[3]), pred, inst.text)
+                  self.ra.gpr(inst.operands[2]), self.ra.gpr(inst.operands[3]),
+                  pred | type_pred_ctrl(inst.op), inst.text)
 
     def unary(self, inst, pred, mnem):
         check_n(inst, 2)
         self.emit(mnem, self.ra.gpr(inst.operands[0]), self.ra.gpr(inst.operands[1]),
-                  pred=pred, comment=inst.text)
+                  pred=pred | type_pred_ctrl(inst.op), comment=inst.text)
 
     def setp(self, inst, pred):
         check_n(inst, 3)
         cmp_code = CMP.get(inst.op.split(".")[1], 0)
-        self.emit("SETP", self.ra.pred(inst.operands[0]), self.ra.gpr(inst.operands[1]),
-                  self.ra.gpr(inst.operands[2]), cmp_code, pred, inst.text)
+        self.emit("SETP", self.ra.pred_index(inst.operands[0]), self.ra.gpr(inst.operands[1]),
+                  self.ra.gpr(inst.operands[2]), 0, pred | type_pred_ctrl(inst.op) | (cmp_code << 8), inst.text)
 
     def ld(self, inst, pred):
         check_n(inst, 2)
@@ -326,14 +368,16 @@ class Lowerer(object):
                 dst = self.ra.gpr(dst_name, step)
                 if step == 64 and dst % 2:
                     raise CompileError("b64 destination must be even-aligned")
-                self.emit("LD", dst, base, off + i * (step // 8), mem_ctrl(space, step), pred, inst.text)
+                self.emit("LD", dst, base, off + i * (step // 8), rtl_mem_ctrl(space, step),
+                          pred | mem_pred_ctrl(space, step), inst.text)
             return
         if len(dsts) != 1:
             raise CompileError("vector load requires .b128 lowering")
         dst = self.ra.gpr(dsts[0], width)
         if width == 64 and dst % 2:
             raise CompileError("b64 destination must be even-aligned")
-        self.emit("LD", dst, base, off, mem_ctrl(space, width), pred, inst.text)
+        self.emit("LD", dst, base, off, rtl_mem_ctrl(space, width),
+                  pred | mem_pred_ctrl(space, width), inst.text)
 
     def st(self, inst, pred):
         check_n(inst, 2)
@@ -348,12 +392,14 @@ class Lowerer(object):
                 src = self.ra.gpr(src_name, step)
                 if step == 64 and src % 2:
                     raise CompileError("b64 source must be even-aligned")
-                self.emit("ST", 0, base, off + i * (step // 8), (src << 16) | mem_ctrl(space, step), pred, inst.text)
+                self.emit("ST", 0, base, off + i * (step // 8), (src << 16) | rtl_mem_ctrl(space, step),
+                          pred | mem_pred_ctrl(space, step), inst.text)
             return
         src = self.ra.gpr(srcs[0], width)
         if width == 64 and src % 2:
             raise CompileError("b64 source must be even-aligned")
-        self.emit("ST", 0, base, off, (src << 16) | mem_ctrl(space, width), pred, inst.text)
+        self.emit("ST", 0, base, off, (src << 16) | rtl_mem_ctrl(space, width),
+                  pred | mem_pred_ctrl(space, width), inst.text)
 
     def mma(self, inst, pred):
         check_n(inst, 4)
@@ -363,7 +409,7 @@ class Lowerer(object):
         a = self.ra.gpr(inst.operands[1], align=2)
         b = self.ra.gpr(inst.operands[2], align=2)
         c = self.ra.gpr(inst.operands[3], align=8)
-        self.emit("MMA.m16n16k16.e4m3.f32", d, a, b, c, pred, inst.text)
+        self.emit("MMA.m16n16k16.e4m3.f32", d, a, b, c, pred | (0xB << 3), inst.text)
 
 
 def check_n(inst, n):
@@ -417,10 +463,28 @@ def width_from_op(op):
     return 64 if any(x in op for x in (".u64", ".s64", ".b64")) else 32
 
 
-def mem_ctrl(space, width):
+def type_pred_ctrl(op):
+    if ".f32" in op:
+        return 0x8 << 3
+    if any(x in op for x in (".u64", ".s64", ".b64")):
+        return 0x3 << 3
+    if any(x in op for x in (".u16", ".s16", ".b16")):
+        return 0x1 << 3
+    if any(x in op for x in (".u8", ".s8", ".b8")):
+        return 0x0 << 3
+    return 0x2 << 3
+
+
+def rtl_mem_ctrl(space, width):
     if width not in WIDTH:
         raise CompileError("illegal base memory width %d" % width)
     return (SPACE.get(space, 0) << 8) | WIDTH[width]
+
+
+def mem_pred_ctrl(space, width):
+    if width not in WIDTH:
+        raise CompileError("illegal base memory width %d" % width)
+    return (WIDTH[width] << 3) | (1 << 7) | (SPACE.get(space, 0) << 11)
 
 
 class Compiler(object):

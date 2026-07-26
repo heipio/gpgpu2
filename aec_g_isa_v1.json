@@ -40,6 +40,16 @@
       "src1": "79:64",
       "src2_or_imm32": "63:32",
       "src3_or_immext": "31:0"
+    },
+    "pred_ctrl_layout": {
+      "pred_index": "98:96",
+      "type_code": "102:99",
+      "imm_enable": "103",
+      "subop": "106:104",
+      "space_code": "109:107",
+      "pred_negate": "110",
+      "pred_enable": "111",
+      "syntax": "@P0 instruction, @!P0 instruction; absent prefix uses PT always-true pseudo-predicate"
     }
   },
   "numeric_modes": {
@@ -89,27 +99,32 @@
     "special": [
       {
         "name": "SR_LANEID",
+        "encoding": "0x0100",
         "width_bits": 32,
         "read_only": true,
         "value": "logical lane id 0..31"
       },
       {
         "name": "SR_WARPID",
+        "encoding": "0x0101",
         "width_bits": 32,
         "read_only": true
       },
       {
         "name": "SR_CTAID_X",
+        "encoding": "0x0102",
         "width_bits": 32,
         "read_only": true
       },
       {
         "name": "SR_NCTAID_X",
+        "encoding": "0x0103",
         "width_bits": 32,
         "read_only": true
       },
       {
         "name": "SR_ACTIVE_MASK",
+        "encoding": "0x0104",
         "width_bits": 32,
         "read_only": true
       },
@@ -153,13 +168,13 @@
   "opcodes": [
     {
       "mnemonic": "NOP",
-      "opcode": "0x00",
+      "opcode": "0xf0",
       "operands": [],
       "semantics": "no architectural state change"
     },
     {
-      "mnemonic": "MOV",
-      "opcode": "0x01",
+      "mnemonic": "CPY",
+      "opcode": "0x54",
       "operands": [
         "Rd",
         "Ra|imm"
@@ -168,7 +183,7 @@
     },
     {
       "mnemonic": "IADD.u32",
-      "opcode": "0x02",
+      "opcode": "0x01",
       "operands": [
         "Rd",
         "Ra",
@@ -188,7 +203,7 @@
     },
     {
       "mnemonic": "FADD.f32",
-      "opcode": "0x04",
+      "opcode": "0x01",
       "operands": [
         "Rd",
         "Ra",
@@ -198,7 +213,7 @@
     },
     {
       "mnemonic": "FMUL.f32",
-      "opcode": "0x05",
+      "opcode": "0x03",
       "operands": [
         "Rd",
         "Ra",
@@ -208,7 +223,7 @@
     },
     {
       "mnemonic": "MAD.f32",
-      "opcode": "0x06",
+      "opcode": "0x04",
       "operands": [
         "Rd",
         "Ra",
@@ -219,7 +234,7 @@
     },
     {
       "mnemonic": "FMA.f32",
-      "opcode": "0x07",
+      "opcode": "0x05",
       "operands": [
         "Rd",
         "Ra",
@@ -230,7 +245,7 @@
     },
     {
       "mnemonic": "SETP",
-      "opcode": "0x08",
+      "opcode": "0x20",
       "operands": [
         "Pd",
         "cmp",
@@ -241,7 +256,7 @@
     },
     {
       "mnemonic": "CMPP",
-      "opcode": "0x09",
+      "opcode": "0x21",
       "operands": [
         "Pd",
         "cmp",
@@ -251,8 +266,97 @@
       "semantics": "floating-point compare; generated NaNs are canonical"
     },
     {
-      "mnemonic": "LD",
+      "mnemonic": "SEL",
+      "opcode": "0x22",
+      "operands": [
+        "Rd",
+        "true_src",
+        "false_src"
+      ],
+      "semantics": "predicate select; pred_ctrl.pred selects the true/false source and pred_en must be zero"
+    },
+    {
+      "mnemonic": "SUB.u32",
+      "opcode": "0x02",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "32-bit wrapping integer subtract"
+    },
+    {
+      "mnemonic": "AND.b32",
       "opcode": "0x10",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "bitwise and"
+    },
+    {
+      "mnemonic": "OR.b32",
+      "opcode": "0x11",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "bitwise or"
+    },
+    {
+      "mnemonic": "XOR.b32",
+      "opcode": "0x12",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "bitwise xor"
+    },
+    {
+      "mnemonic": "SHL.b32",
+      "opcode": "0x14",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "logical left shift by (shift_amount & 31)"
+    },
+    {
+      "mnemonic": "SHR.b32",
+      "opcode": "0x15",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "logical right shift by (shift_amount & 31)"
+    },
+    {
+      "mnemonic": "NOT.b32",
+      "opcode": "0x13",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "semantics": "bitwise not"
+    },
+    {
+      "mnemonic": "SAR.b32",
+      "opcode": "0x16",
+      "operands": [
+        "Rd",
+        "Ra",
+        "Rb|imm"
+      ],
+      "semantics": "arithmetic right shift by (shift_amount & 31)"
+    },
+    {
+      "mnemonic": "LD",
+      "opcode": "0x30",
       "operands": [
         "Rd",
         "space",
@@ -263,7 +367,7 @@
     },
     {
       "mnemonic": "ST",
-      "opcode": "0x11",
+      "opcode": "0x31",
       "operands": [
         "space",
         "addr",
@@ -274,15 +378,60 @@
     },
     {
       "mnemonic": "FENCE",
-      "opcode": "0x12",
+      "opcode": "0x34",
       "operands": [
         "subop"
       ],
       "semantics": "subop 0 CTA scope, subop 1 device scope"
     },
     {
+      "mnemonic": "LOADI",
+      "opcode": "0x55",
+      "operands": [
+        "Rd",
+        "imm32"
+      ],
+      "semantics": "load 32-bit immediate from src2_or_imm32"
+    },
+    {
+      "mnemonic": "LOADI64",
+      "opcode": "0x56",
+      "operands": [
+        "Rk",
+        "imm64"
+      ],
+      "semantics": "load low 32 bits to Rk and high 32 bits to Rk+1; Rk even and <= R254"
+    },
+    {
+      "mnemonic": "CVT",
+      "opcode": "0x57",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "semantics": "type conversion according to type/subop"
+    },
+    {
+      "mnemonic": "PACK",
+      "opcode": "0x58",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "semantics": "pack narrow numeric values according to type/subop"
+    },
+    {
+      "mnemonic": "UNPACK",
+      "opcode": "0x59",
+      "operands": [
+        "Rd",
+        "Ra"
+      ],
+      "semantics": "unpack narrow numeric values according to type/subop"
+    },
+    {
       "mnemonic": "BRA",
-      "opcode": "0x20",
+      "opcode": "0x40",
       "operands": [
         "target"
       ],
@@ -290,7 +439,7 @@
     },
     {
       "mnemonic": "BRX",
-      "opcode": "0x21",
+      "opcode": "0x41",
       "operands": [
         "predicate",
         "target"
@@ -299,7 +448,7 @@
     },
     {
       "mnemonic": "SSY",
-      "opcode": "0x22",
+      "opcode": "0x42",
       "operands": [
         "reconv_pc"
       ],
@@ -307,13 +456,13 @@
     },
     {
       "mnemonic": "SYNC",
-      "opcode": "0x23",
+      "opcode": "0x43",
       "operands": [],
       "semantics": "pop reconvergence token or raise SIMT_STACK_FAULT"
     },
     {
       "mnemonic": "BAR.SYNC",
-      "opcode": "0x24",
+      "opcode": "0x44",
       "operands": [
         "barrier_id",
         "expected_warps"
@@ -322,7 +471,7 @@
     },
     {
       "mnemonic": "SHFL",
-      "opcode": "0x30",
+      "opcode": "0x60",
       "operands": [
         "Rd",
         "Ra",
@@ -332,7 +481,7 @@
     },
     {
       "mnemonic": "REDUCE.ADD.f32",
-      "opcode": "0x31",
+      "opcode": "0x61",
       "operands": [
         "Rd",
         "Ra"
@@ -341,38 +490,43 @@
     },
     {
       "mnemonic": "SFU.RCP.f32",
-      "opcode": "0x40",
+      "opcode": "0x80",
       "operands": [
         "Rd",
         "Ra"
       ],
+      "subop": "0",
       "precision": "max relative error <= 2^-10",
       "specials": "+/-0 -> +/-Inf; +/-Inf -> +/-0; NaN -> canonical NaN"
     },
     {
       "mnemonic": "SFU.EXP2.f32",
-      "opcode": "0x41",
+      "opcode": "0x80",
       "operands": [
         "Rd",
         "Ra"
       ],
+      "subop": "1",
       "precision": "max relative error <= 2^-9 in normal result range",
       "specials": "overflow -> +Inf; underflow -> +0; NaN -> canonical NaN"
     },
     {
       "mnemonic": "MMA.m16n16k16.e4m3.f32",
-      "opcode": "0x50",
+      "opcode": "0x70",
       "operands": [
         "Dbase",
         "Abase",
         "Bbase",
         "Cbase"
       ],
-      "semantics": "D[m,n] = C[m,n] + sum k=0..15 fp32(fp8(A[m,k]))*fp32(fp8(B[k,n])) in exact ascending k order"
+      "predication": "illegal unless all 32 logical lanes execute the instruction under active mask and predicate",
+      "type_code": "0xb",
+      "subop": "0x0",
+      "semantics": "D[m,n] = C[m,n] + sum k=0..15 fma.fp32(fp8(A[m,k]), fp8(B[k,n]), acc) in exact ascending k order"
     },
     {
       "mnemonic": "HALT",
-      "opcode": "0x7f",
+      "opcode": "0x45",
       "operands": [],
       "semantics": "mark warp complete"
     }
@@ -380,29 +534,40 @@
   "mma_fragments": {
     "MMA.m16n16k16.e4m3.f32": {
       "logical_lanes": 32,
+      "opcode": "0x70",
+      "type_code": "0xb",
+      "subop": "0",
       "a_fragment": {
-        "registers_per_lane": 4,
+        "registers_per_lane": 2,
         "base_alignment": 2,
         "packing": "each 32-bit register holds four FP8 values, byte 0 lowest k",
-        "mapping": "lane l owns rows floor(l/2) and floor(l/2)+8; registers cover k groups 0..3,4..7,8..11,12..15 for those rows"
+        "mapping": "for logical lane l, row=l>>1, half=l&1, col_base=8*half; R[A+0] bytes hold A[row][col_base+0..3], R[A+1] bytes hold A[row][col_base+4..7]"
       },
       "b_fragment": {
-        "registers_per_lane": 4,
+        "registers_per_lane": 2,
         "base_alignment": 2,
         "packing": "each 32-bit register holds four FP8 values",
-        "mapping": "lane l owns cols (l%16) and (l%16)+16 modulo 16 aliasing to the 16 visible columns; registers cover k groups 0..3,4..7,8..11,12..15"
+        "mapping": "for logical lane l, half=l&1, k_base=8*half, b_col=l>>1; R[B+0] bytes hold B[k_base+0..3][b_col], R[B+1] bytes hold B[k_base+4..7][b_col]"
       },
       "c_fragment": {
         "registers_per_lane": 8,
         "base_alignment": 8,
         "packing": "one FP32 accumulator per register",
-        "mapping": "lane l owns eight C/D elements in row-major groups; global element index = l*8+i over 256 outputs"
+        "mapping": "for logical lane l, row=l>>1, half=l&1, col_base=8*half; R[C+i] stores C[row][col_base+i] for i=0..7"
       },
       "d_fragment": {
         "registers_per_lane": 8,
         "base_alignment": 8,
         "packing": "one FP32 result per register",
-        "mapping": "same as c_fragment"
+        "mapping": "for logical lane l, row=l>>1, half=l&1, col_base=8*half; R[D+i] stores D[row][col_base+i] for i=0..7"
+      },
+      "encoding_fields": {
+        "dst": "D fragment base GPR, high bits zero, 8-register aligned, <= R248",
+        "src1": "A fragment base GPR, high bits zero, even aligned, <= R254",
+        "src2_or_imm32[15:0]": "B fragment base GPR, high bits zero, even aligned, <= R254",
+        "src3_or_immext[15:0]": "C fragment base GPR, high bits zero, 8-register aligned, <= R248",
+        "pred_ctrl.type_code": "0xb",
+        "pred_ctrl.ctrl": "subop, 0 for m16n16k16.e4m3.f32"
       },
       "accumulation_order": "for each output element, execute k=0,1,...,15; do not reassociate or tree-reduce"
     }
@@ -416,6 +581,46 @@
     "WATCHDOG_TIMEOUT",
     "UNSUPPORTED_FEATURE"
   ],
+  "csr_registers": {
+    "CSR_CTRL": {
+      "address": "0x0000",
+      "bits": {
+        "0": "START write-one pulse, auto-clears",
+        "1": "DONE read status, write-one-clear",
+        "2": "FAULT read status, write-one-clear"
+      }
+    },
+    "CSR_PC": {
+      "address": "0x0004",
+      "bits": {
+        "15:0": "kernel start PC"
+      }
+    },
+    "CSR_STATUS": {
+      "address": "0x0008",
+      "bits": {
+        "0": "RUNNING",
+        "1": "DONE",
+        "2": "FAULT"
+      }
+    },
+    "CSR_FAULT_CODE": {
+      "address": "0x000c",
+      "bits": {
+        "3:0": "aec_fault_e code: 0 none, 1 illegal instruction, 2 misaligned access, 3 address error, 4 SIMT stack fault, 5 barrier deadlock, 6 watchdog timeout, 7 unsupported feature"
+      }
+    },
+    "CSR_FAULT_PC": {
+      "address": "0x0010",
+      "bits": {
+        "15:0": "PC captured when the first outstanding fault is latched"
+      }
+    },
+    "IMEM_WINDOW": {
+      "address_range": "0x1000..0x1fff",
+      "access": "32-bit host writes/readback into 128-bit instruction memory words"
+    }
+  },
   "capability_registers": {
     "required": [
       "isa_version",

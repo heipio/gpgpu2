@@ -1,0 +1,17 @@
+# AEC RTL simulation host command protocol.
+#
+# Lines beginning with # are comments. All numeric fields are hexadecimal; the
+# 0x prefix is optional. Addresses are byte addresses. Data words are 32-bit.
+#
+# WRITE_AXI <hex_addr> <hex_data>
+#   Write one 32-bit little-endian word into the testbench AXI memory model.
+#
+# WRITE_AXIL <hex_addr> <hex_data>
+#   Write one 32-bit word to the CU AXI4-Lite CSR/IMEM window.
+#
+# POLL_AXIL <hex_addr> <hex_mask> <hex_expected>
+#   Repeatedly read AXI4-Lite until (value & mask) == expected.
+#
+# DUMP_AXI <hex_addr> <num_words> <filename>
+#   Dump num_words 32-bit little-endian words from AXI memory into a text file,
+#   one 8-digit hexadecimal word per line.

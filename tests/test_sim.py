@@ -1,5 +1,10 @@
 import math
+import os
 import struct
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "compiler"))
 
 from simulator import (
     CANONICAL_NAN_F32_BITS,
@@ -103,6 +108,29 @@ def test_inactive_lanes_are_silent_for_sfu_writeback():
         assert bits_to_f32(sim.gpr[lane][2]) == 0.5
     for lane in range(16, 32):
         assert sim.gpr[lane][2] == 0xDEADBEEF
+
+
+def test_simulator_stage7_integer_logic_and_laneid_contract():
+    from aec_assembler import Assembler
+
+    asm = """
+CPY.u32 R1, %laneid
+LOADI.u32 R2, 33
+SHL.b32 R3, R1, R2
+SHR.b32 R4, R3, 1
+SUB.u32 R5, R4, R1
+XOR.b32 R6, R5, R1
+HALT
+"""
+    blob = b"".join(inst.to_aecbin() for inst in Assembler().assemble_text(asm))
+    sim = AECGSimulator()
+    sim.active_mask = 0xFF
+    sim.execute_aecbin(blob)
+    assert sim.faults == []
+    for lane in range(8):
+        assert sim.gpr[lane][1] == lane
+        assert sim.gpr[lane][2] == 33
+        assert sim.gpr[lane][6] == ((((lane << 1) & 0xFFFFFFFF) >> 1) - lane & 0xFFFFFFFF) ^ lane
 
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):

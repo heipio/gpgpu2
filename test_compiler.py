@@ -62,6 +62,32 @@ mma.sync.aligned.m16n16k16.row.col.e4m3.e4m3.f32 %r1, %r0, %r2, %r8;
         raise AssertionError("expected misaligned MMA D fragment to be rejected")
 
 
+def test_stage7_integer_logic_ops_lower_to_contract_opcodes():
+    blob, report = _compile("""
+sub.u32 %r3, %r1, %r2;
+and.b32 %r4, %r3, 255;
+or.b32 %r5, %r4, %r1;
+xor.b32 %r6, %r5, %r2;
+shl.b32 %r7, %r6, 33;
+shr.u32 %r8, %r7, 1;
+""")
+    assert len(blob) % 16 == 0
+    mnems = [x["mnemonic"] for x in report["instructions"]]
+    assert mnems[:6] == ["SUB.u32", "AND.b32", "OR.b32", "XOR.b32", "SHL.b32", "SHR.b32"]
+
+
+def test_memory_space_codes_match_assembler_rtl_contract():
+    _blob, report = _compile("""
+ld.global.u32 %r1, [%r0+0];
+ld.param.u32 %r2, [%r0+4];
+ld.shared.u32 %r3, [%r0+8];
+ld.local.u32 %r4, [%r0+12];
+ld.const.u32 %r5, [%r0+16];
+""")
+    ctrls = [inst["src3"] for inst in report["instructions"][:5]]
+    assert ctrls == [0x002, 0x102, 0x202, 0x302, 0x402]
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

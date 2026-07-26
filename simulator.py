@@ -19,24 +19,41 @@ FP8_E4M3FN_MAX_NEG = 0xFE
 FP8_E4M3FN_MAX_VALUE = 448.0
 LOGICAL_WARP_WIDTH = 32
 AEC_OPCODE_BY_VALUE = {
-    0x00: "NOP",
-    0x01: "MOV",
-    0x02: "IADD.u32",
-    0x03: "IMUL.u32",
-    0x04: "FADD.f32",
-    0x05: "FMUL.f32",
-    0x06: "MAD.f32",
-    0x07: "FMA.f32",
-    0x08: "SETP",
-    0x10: "LD",
-    0x11: "ST",
-    0x12: "FENCE",
-    0x20: "BRA",
-    0x21: "BRX",
-    0x22: "SSY",
-    0x23: "SYNC",
-    0x24: "BAR.SYNC",
-    0x7F: "HALT",
+    0x01: "ADD",
+    0x02: "SUB.u32",
+    0x03: "MUL",
+    0x04: "MAD.f32",
+    0x05: "FMA.f32",
+    0x10: "AND.b32",
+    0x11: "OR.b32",
+    0x12: "XOR.b32",
+    0x13: "NOT.b32",
+    0x14: "SHL.b32",
+    0x15: "SHR.b32",
+    0x16: "SAR.b32",
+    0x20: "SETP",
+    0x21: "CMPP",
+    0x22: "SEL",
+    0x30: "LD",
+    0x31: "ST",
+    0x34: "FENCE",
+    0x40: "BRA",
+    0x41: "BRX",
+    0x42: "SSY",
+    0x43: "SYNC",
+    0x44: "BAR.SYNC",
+    0x45: "HALT",
+    0x54: "CPY",
+    0x55: "LOADI",
+    0x56: "LOADI64",
+    0x57: "CVT",
+    0x58: "PACK",
+    0x59: "UNPACK",
+    0x60: "SHFL",
+    0x61: "REDUCE.ADD.f32",
+    0x70: "MMA.m16n16k16.e4m3.f32",
+    0x80: "SFU",
+    0xF0: "NOP",
 }
 
 
@@ -61,10 +78,15 @@ def decode_aec_instruction_words(blob: bytes, pc: int) -> Dict[str, int]:
     w0, w1, w2, w3 = struct.unpack("<IIII", blob[start:start + 16])
     value = w0 | (w1 << 32) | (w2 << 64) | (w3 << 96)
     opcode = (value >> 112) & 0xFFFF
+    pred_ctrl = (value >> 96) & 0xFFFF
+    mnemonic = AEC_OPCODE_BY_VALUE.get(opcode, "ILLEGAL")
+    if opcode == 0x80:
+        subop = (pred_ctrl >> 8) & 0x7
+        mnemonic = {0: "SFU.RCP.f32", 1: "SFU.EXP2.f32"}.get(subop, "SFU.RESERVED")
     return {
         "opcode": opcode,
-        "mnemonic": AEC_OPCODE_BY_VALUE.get(opcode, "ILLEGAL"),
-        "pred": (value >> 96) & 0xFFFF,
+        "mnemonic": mnemonic,
+        "pred": pred_ctrl,
         "dst": (value >> 80) & 0xFFFF,
         "src1": (value >> 64) & 0xFFFF,
         "src2": (value >> 32) & 0xFFFFFFFF,
@@ -265,12 +287,12 @@ class AECGSimulator:
         self.reconv_stack = []
         self.halted = False
 
-    def lane_active(self, lane: int, predicate: Optional[int] = None) -> bool:
+    def lane_active(self, lane: int, predicate: Optional[int] = None, negate: bool = False) -> bool:
         if ((self.active_mask >> lane) & 1) == 0:
             return False
         if predicate is None:
             return True
-        return self.pred[lane][predicate]
+        return self.pred[lane][predicate] ^ negate
 
     def write_gpr(self, lane: int, reg: int, value: int, predicate: Optional[int] = None) -> None:
         if self.lane_active(lane, predicate):
@@ -317,14 +339,14 @@ class AECGSimulator:
             return
         self.pc, self.active_mask = self.reconv_stack.pop()
 
-    def brx(self, predicate: int, target_pc: int, fallthrough_pc: int) -> None:
+    def brx(self, predicate: int, target_pc: int, fallthrough_pc: int, negate: bool = False) -> None:
         taken_mask = 0
         fallthrough_mask = 0
         for lane in range(self.lanes):
             bit = 1 << lane
             if (self.active_mask & bit) == 0:
                 continue
-            if self.pred[lane][predicate]:
+            if self.pred[lane][predicate] ^ negate:
                 taken_mask |= bit
             else:
                 fallthrough_mask |= bit
@@ -371,7 +393,11 @@ class AECGSimulator:
     def _execute_decoded(self, inst: Dict[str, int]) -> None:
         m = inst["mnemonic"]
         pred = inst["pred"]
-        predicate = None if pred == 0xFFFF else pred
+        pred_enable = ((pred >> 15) & 1) == 1
+        pred_negate = ((pred >> 14) & 1) == 1
+        imm_en = ((pred >> 7) & 1) == 1
+        subop = (pred >> 8) & 0x7
+        predicate = None if pred == 0xFFFF or not pred_enable else (pred & 0x7)
         if m == "NOP" or m == "FENCE":
             return
         if m == "HALT":
@@ -384,7 +410,7 @@ class AECGSimulator:
             if predicate is None:
                 self.pc = inst["src2"]
             else:
-                self.brx(predicate, inst["src2"], self.pc + 1)
+                self.brx(predicate, inst["src2"], self.pc + 1, negate=pred_negate)
             return
         if m == "SSY":
             self.ssy(inst["src2"])
@@ -393,16 +419,43 @@ class AECGSimulator:
             self.sync()
             return
         for lane in range(self.lanes):
-            if not self.lane_active(lane, predicate):
+            if not self.lane_active(lane, predicate, negate=pred_negate):
                 continue
-            if m == "MOV":
-                self.gpr[lane][inst["dst"]] = inst["src2"] if inst["src1"] == 0xFFFF else self.gpr[lane][inst["src1"]]
-            elif m == "IADD.u32":
-                rhs = self.gpr[lane][inst["src2"]] if inst["src3"] == 1 else inst["src2"]
+            if m == "CPY":
+                if inst["src1"] == 0x0100:
+                    self.gpr[lane][inst["dst"]] = lane
+                else:
+                    self.gpr[lane][inst["dst"]] = self.gpr[lane][inst["src1"]]
+            elif m == "LOADI":
+                self.gpr[lane][inst["dst"]] = inst["src2"]
+            elif m == "ADD":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
                 self.gpr[lane][inst["dst"]] = (self.gpr[lane][inst["src1"]] + rhs) & 0xFFFFFFFF
-            elif m == "IMUL.u32":
-                rhs = self.gpr[lane][inst["src2"]] if inst["src3"] == 1 else inst["src2"]
+            elif m == "MUL":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
                 self.gpr[lane][inst["dst"]] = (self.gpr[lane][inst["src1"]] * rhs) & 0xFFFFFFFF
+            elif m == "SUB.u32":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
+                self.gpr[lane][inst["dst"]] = (self.gpr[lane][inst["src1"]] - rhs) & 0xFFFFFFFF
+            elif m == "AND.b32":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
+                self.gpr[lane][inst["dst"]] = self.gpr[lane][inst["src1"]] & rhs
+            elif m == "OR.b32":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
+                self.gpr[lane][inst["dst"]] = self.gpr[lane][inst["src1"]] | rhs
+            elif m == "XOR.b32":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
+                self.gpr[lane][inst["dst"]] = self.gpr[lane][inst["src1"]] ^ rhs
+            elif m == "SHL.b32":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
+                self.gpr[lane][inst["dst"]] = (self.gpr[lane][inst["src1"]] << (rhs & 31)) & 0xFFFFFFFF
+            elif m == "SHR.b32":
+                rhs = inst["src2"] if imm_en else self.gpr[lane][inst["src2"]]
+                self.gpr[lane][inst["dst"]] = (self.gpr[lane][inst["src1"]] >> (rhs & 31)) & 0xFFFFFFFF
+            elif m == "SFU.RCP.f32":
+                self.gpr[lane][inst["dst"]] = sfu_rcp_bits(self.gpr[lane][inst["src1"]])
+            elif m == "SFU.EXP2.f32":
+                self.gpr[lane][inst["dst"]] = sfu_exp2_bits(self.gpr[lane][inst["src1"]])
             elif m == "LD":
                 width_code = inst["src3"] & 0xFF
                 if width_code != 2:
@@ -419,7 +472,7 @@ class AECGSimulator:
                 addr = (self.gpr[lane][inst["src1"]] + inst["src2"]) & 0xFFFFFFFF
                 self.store_u32(addr, self.gpr[lane][src])
             elif m == "SETP":
-                cmp_code = inst["src3"]
+                cmp_code = subop
                 lhs = self.gpr[lane][inst["src1"]]
                 rhs = self.gpr[lane][inst["src2"]]
                 self.pred[lane][inst["dst"]] = (lhs == rhs) if cmp_code == 0 else (lhs != rhs)
