@@ -1,152 +1,136 @@
-# Full Project Audit
+# Full Project Contract Audit
 
-Date: 2026-07-26
+Date: 2026-07-29
+
+Source of truth: `D:/桌面/contest.md`, `aec_g_isa_v1.json`, and the current repository.
 
 ## Current Position
 
-The project is at the end of Stage 7.3: scalar/SIMT infrastructure bring-up is
-working in RTL simulation. The current system can assemble/load/launch small
-AEC kernels through the Python simulation runtime, execute scalar ALU and
-scatter/gather memory operations on 8 physical lanes, and validate results via
-XSim. This is not yet a complete contest submission.
+The project is now past RTL bring-up and into Vitis/XDMA integration readiness. The current tree contains:
 
-Mode classification: implementation.
+- A machine-readable AEC-G v1.0 ISA contract.
+- Golden simulator, assembler, restricted PTX compiler, Python simulation runtime, fixed C runtime skeleton, PyTorch adapter skeleton.
+- Synthesizable SystemVerilog RTL for CU front end, VRF/PRF, ALU/FPU/SFU/MMA integration, SIMT control, scoreboard, barrier, LSU, CSR, SoC wrapper, and four Vitis-visible AXI memory masters.
+- IP-XACT and Vitis RTL kernel metadata.
+- A regenerated formal RTL kernel object: `bitstream/aec_gpgpu.hw.xo`.
+
+Mode classification: submission-readiness bring-up, but not full contest closure. The missing scoring artifact is still a routed `.xclbin` plus real-board correctness/performance/stability evidence.
+
+## Contract Fixes Applied During This Audit
+
+1. Branch target field correction.
+   - `contest.md` 6.4.7 and 6.4.11 require `BR/BRX/SSY` target PCs in `src3_or_immext`, not `src2_or_imm32`.
+   - Fixed `compiler/aec_assembler.py`.
+   - Fixed PTX fixups in `compiler/compiler.py`.
+   - Fixed golden execution in `tests/simulator.py`.
+   - Fixed RTL branch target selection in `rtl/ex_stage.sv`.
+   - Updated `rtl/tb_divergent_brx_system.sv` hand-written instruction constants.
+   - Added `tests/test_contract_audit.py::test_branch_targets_use_src3_or_immext_contract_field`.
+
+2. Test contract cleanup.
+   - Updated stale assembler expected hex values to official opcode/type/pred layout.
+   - Corrected MMA `pred_ctrl` expectation: `type=0xb` lives in `pred_ctrl[6:3]`, so base encoding is `0x0058`.
+   - Added a `__main__` self-test entry to `tests/test_assembler.py`.
+   - Regenerated `tests/vector_add.*`, `tests/alu_simt.*`, `tests/sfu_test.*`, and `tests/predicate_test.*`.
+
+3. Packaging hygiene cleanup.
+   - Removed stale generated `platform/ip_repo/aec_gpgpu_1_0/src/aec_soc_top.sv`.
+   - Current packaged top is `aec_soc_top.v` wrapping `aec_soc_core.sv`.
+   - Regenerated the current `.xo`; archive inspection confirms no stale `aec_soc_top.sv` remains.
 
 ## Verified Working Surface
 
-- Machine-readable ISA exists in `aec_g_isa_v1.json`.
-- Golden simulator covers FP8 E4M3FN conversion, SFU numeric reference
-  functions, MMA golden accumulation order, SIMT stack unit tests, and current
-  Stage 7 scalar ALU semantics.
-- Assembler emits strict headerless 128-bit `.aecbin`.
-- PTX compiler parses and lowers a restricted subset, including b128 lowering,
-  b64/MMA register-alignment diagnostics, scalar ALU, LD/ST, SETP, branch,
-  SFU, and MMA opcode emission.
-- Contract guard test checks opcode, special register, and memory-space encoding
-  consistency across JSON, assembler, PTX compiler, simulator, and RTL.
-- RTL currently includes:
-  - `imem` XPM BRAM instruction memory.
-  - IF/fetch-decode/issue.
-  - 8-lane VRF and small PRF.
-  - scalar ALU for MOV/IADD/IMUL/SUB/AND/OR/XOR/SHL/SHR.
-  - `%laneid` special register as logical lane id.
-  - BRX/SSY/SYNC SIMT stack bring-up.
-  - vector LSU scatter/gather over per-lane 32-bit AXI transfers.
-  - CSR/AXI-Lite host start/done and IMEM loading.
-  - trace logger for simulation.
-- Remote Vivado/XSim 2023.1 validation has passed for vector-add and 8-lane
-  SIMT ALU E2E tests.
-
-## Tests Re-run During This Audit
+Local Python self-tests:
 
 ```text
-python skills/u280-gpgpu-contest-completer/scripts/audit_submission.py .
-python tests/test_contract_audit.py
-python tests/test_compiler.py
 python tests/test_sim.py
-python tests/test_sim_ctrl.py
-python tests/test_differential.py
+python tests/test_compiler.py
 python tests/test_assembler.py
-python tests/run_vector_add_e2e.py --skip-xsim
-python tests/run_alu_simt_e2e.py --skip-xsim
+python tests/test_contract_audit.py
 ```
 
-Official-style repository audit result:
+All passed.
+
+Remote Python 3.6.8 validation on `contest5@127.0.0.1:2222`:
 
 ```text
-[MISSING] bitstream/xclbin artifact
-[MISSING] timing/util/power/benchmark reports
+python3 tests/test_sim.py
+python3 tests/test_compiler.py
+python3 tests/test_assembler.py
+python3 tests/test_contract_audit.py
 ```
 
-## Serious Gaps / Vulnerabilities
+All passed.
 
-1. No FP8/MMA/SFU RTL yet.
-   - `alu_lane.sv` returns zero for FADD/FMUL/MAD/FMA placeholders.
-   - RTL has opcode constants for SFU/MMA but no executable SFU/MMA units.
-   - Contest numerical gates for FP8 MMA, SFU RCP, and SFU EXP2 are therefore
-     only golden-model gates today, not hardware gates.
+Remote Vivado/Vitis 2023.1 validation with XRT 2022.1 environment:
 
-2. Predicate semantics are incomplete in RTL.
-   - `pred_ctrl` is decoded, and BRX uses predicate masks, but general
-     predicated ALU/LD/ST write suppression is not yet fully applied.
-   - Hidden predication tests can still expose inactive/predicate-masked writes.
+```text
+make -C platform check-kernel
+make -C platform ipxact
+make -C platform xo
+vivado -mode batch -source rtl/synth_soc_top_ooc.tcl
+```
 
-3. Fault/status reporting is not architecturally wired.
-   - SIMT stack overflow/underflow exists internally but is not exposed through
-     CSR/status/fault registers.
-   - Illegal instruction, unsupported type/space, misaligned access, AXI
-     response errors, address errors, watchdog, and barrier deadlock are not a
-     complete hardware-visible fault system.
+Results:
 
-4. Memory correctness is still bring-up level.
-   - LSU handles per-lane 32-bit scatter/gather but does not implement b8/b16/b64
-     widening/narrowing, even-register-pair writeback, atomics, coalescing, or
-     cross-64-byte split/fault behavior.
-   - Runtime 64-bit pointer windowing exists as a host skeleton, but RTL does
-     not consume a real address-window table from host.
-   - FENCE/cache flush/invalidate policy is not implemented beyond comments and
-     stage documentation.
+- `check-kernel`: passed, 28 packaged RTL sources present.
+- `ipxact`: passed, generated `platform/ip_repo/aec_gpgpu_1_0/component.xml`.
+- `xo`: passed, regenerated `bitstream/aec_gpgpu.hw.xo`, size `90305` bytes.
+- SoC OOC synth: passed, no errors, no critical warnings.
+- Timing at 5.000 ns: WNS `+0.339 ns`, TNS `0.000 ns`.
 
-5. Host/runtime is not XDMA-backed.
-   - `runtime/aec_runtime.cpp` is a host-shadow skeleton with TODOs for XDMA
-     command queue submission, completion polling, and cache consistency.
-   - `runtime/aec_runtime_sim.py` is useful for XSim but is not the board
-     runtime.
+Target IP packager warnings closed:
 
-6. PyTorch path is not scoreable.
-   - `pytorch/aec_torch.py` blocks scoreable CPU fallback correctly, but real
-     FPGA-backed P0/P1 operators are not implemented.
-   - FP8 GEMM, add/mul/relu, Conv2d, residual, pooling, LayerNorm, Softmax,
-     attention, KV cache, and on-device argmax remain future work.
+- `IP_Flow 19-5101`: absent.
+- `IP_Flow 19-3158`: absent.
+- `IP_Flow 19-5661`: absent.
+- `IP_Flow 19-11770`: absent.
 
-7. No Vitis/XDMA platform integration yet.
-   - `constraints/`, `platform/`, `driver/`, and `bitstream/` are placeholders.
-   - No `connectivity.cfg`, HBM port mapping, kernel wrapper, xclbin build, or
-     board programming flow exists.
+Remaining warning class:
 
-8. No PPA or board evidence.
-   - Only OOC/bring-up synthesis evidence exists for early RTL, including XPM
-     IMEM BRAM inference.
-   - No routed timing closure, WNS, utilization per SLR, power, thermal,
-     bandwidth, long-run stability, or benchmark logs are present.
+- SoC OOC synth still emits Xilinx Floating-Point IP internal unused-port warnings and a moved-XCI warning. These are not AEC-G semantic violations, but should be documented in the third-party IP/license/build notes before final submission.
 
-9. Model scoring workloads are not implemented.
-   - No ResNet-18/ResNet-50 end-to-end path.
-   - No approximately 1B decoder-only Transformer path.
-   - No accuracy gates, token generation, EOS padding, perplexity/token-match
-     validation, or model benchmark harness.
+## Stage Consistency Status
 
-10. Repository hygiene risk remains.
-   - Root-level compatibility mirrors (`compiler.py`, `simulator.py`, tests) and
-     directory versions are currently synchronized, but this is fragile.
-   - Long term, root files should become thin wrappers or be removed if the
-     submission harness permits.
+- Stage 1, ISA/golden model: structurally consistent. FP8 E4M3FN, SFU relative-error gates, MMA layout, inactive-lane reduction rule, predicate layout, CSR/fault map are represented in JSON and tested at golden-model level.
+- Stage 2, software stack foundation: compiler/assembler/runtime skeleton exist and now agree on opcode, pred_ctrl, special register, memory-space, MMA alignment, and branch target fields.
+- Stage 3-6, RTL bring-up/host control: CU pipeline, VRF/PRF, ALU, LSU, SIMT, CSR, XPM IMEM, scoreboard/barrier/FENCE hooks, and fault status are implemented to bring-up depth and pass OOC synthesis.
+- Stage 7, assembler/runtime simulation: assembler and simulation runtime are usable; branch encoding was corrected during this audit.
+- Stage 8, SFU: SFU model and RTL exist with documented relative-error thresholds; deeper randomized RTL-vs-golden sweeps remain needed for final confidence.
+- Stage 9, MMA/FPU: FP8/MMA RTL integration exists and uses the Xilinx FMA IP path, but model-scale throughput and full bit-exact random RTL sweeps remain incomplete.
+- Vitis/XDMA integration: IP-XACT and `.xo` are now generated. `.xclbin` link and real board run are still missing.
 
-## Recommended Next Stages
+## Remaining Blocking Gaps To Full Contest Closure
 
-1. Stage 7.4: complete predicated execution and architectural fault/status CSR.
-   This should happen before MMA/SFU to prevent masked-lane bugs from spreading.
+1. Generate routed hardware `.xclbin`.
+   - Run `v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config platform/connectivity.cfg`.
+   - Inspect link timing/utilization/power and confirm all scoring clocks WNS >= 0.
 
-2. Stage 8: implement SFU RTL for RCP/EXP2 with special-value tests and error
-   sweeps against the golden model.
+2. Real-board XDMA/XRT execution.
+   - Program U280 with the generated `.xclbin`.
+   - Run the XRT host lifecycle: capability read, module load, kernel launch, synchronize, result readback, fault/counter read.
+   - Capture `xbutil examine`, BDF, shell UUID, XRT, thermal/electrical logs.
 
-3. Stage 9: implement FP8 E4M3FN decode/pack and MMA.m16n16k16.e4m3.f32 with
-   strict k=0..15 accumulation order and fragment-layout tests.
+3. Runtime completeness.
+   - `runtime/aec_runtime.cpp` still has command queue, completion polling, cache flush/invalidate, and state-reset TODOs.
+   - The scoreable path must reject unsupported capabilities and must not truncate 64-bit device pointers.
 
-4. Stage 10: build real XDMA/Vitis platform integration:
-   command queue, address-window table, capability/fault CSRs, HBM mappings, and
-   staged build scripts.
+4. Memory subsystem performance.
+   - The top exposes four HBM AXI masters, but the CU currently has one in-order LSU stream routed by address bits.
+   - Full HBM throughput still needs multi-issue LSU queues, multiple CUs, or independent request streams.
 
-5. Stage 11: add PyTorch scoreable P0/P1 operators backed by runtime launches,
-   then expand toward ResNet-50 and LLM priority paths.
+5. Numeric and hidden-test confidence.
+   - Expand SFU, FPU, MMA, SHFL, REDUCE, predicate, fault, and barrier randomized RTL-vs-golden differential tests.
+   - Confirm MMA scale ABI and model manifest behavior for tensor/block/channel scale modes.
 
-6. Stage 12: PPA and submission hardening:
-   multi-CU scale, timing closure, SLR floorplanning, HBM bandwidth, power,
-   stability, benchmark reports, and final bitstream/xclbin.
+6. PyTorch/model scoring.
+   - Build scoreable P0/P1 operators backed by the runtime.
+   - Add ResNet-18/ResNet-50 and approximately 1B decoder-only Transformer paths.
+   - Ensure CPU fallback logs are complete and fallback ratio is zero for scoreable main compute.
+
+7. Submission evidence.
+   - Add final timing/utilization/power reports, third-party IP/license list, benchmark raw logs, reproducibility commands, 30-minute stability evidence, and final audit manifest.
 
 ## Bottom Line
 
-The current project has a credible and tested foundation through Stage 7.3, but
-it is still below scoreable contest readiness. The next correctness blocker is
-not performance; it is completing predicate/fault semantics, then implementing
-hardware SFU/MMA and real XDMA-backed runtime integration.
+The stack is internally more consistent after this audit, and one real encoding bug was fixed across software, simulator, RTL, and tests. The current deliverable is a valid `.xo` plus synthesized SoC RTL foundation. It is not yet a complete contest submission until `.xclbin` link, board execution, scoreable runtime/PyTorch paths, model workloads, and stability evidence are closed.

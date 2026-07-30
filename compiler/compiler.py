@@ -255,7 +255,7 @@ class Lowerer(object):
             label = label.lstrip("$")
             if label not in self.prog.labels:
                 raise CompileError("unknown branch label %s" % label)
-            self.out[idx].src2 = self.prog.labels[label]
+            self.out[idx].src3 = self.prog.labels[label]
         self.emit("HALT", comment="implicit halt")
         return self.out
 

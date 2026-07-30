@@ -5,6 +5,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "compiler"))
 
 from compiler import CompileError, Compiler  # noqa: E402
+from aec_assembler import Assembler  # noqa: E402
 
 
 def _ptx(body):
@@ -86,6 +87,14 @@ ld.const.u32 %r5, [%r0+16];
 """)
     ctrls = [inst["src3"] for inst in report["instructions"][:5]]
     assert ctrls == [0x002, 0x102, 0x202, 0x302, 0x402]
+
+
+def test_assembler_bar_sync_uses_dst_field_for_barrier_id():
+    inst = Assembler().assemble_text("BAR.SYNC 3, 0\n")[0]
+    word = inst.encode_int()
+    assert ((word >> 80) & 0xFF) == 3
+    assert ((word >> 64) & 0xFFFF) == 0
+    assert ((word >> 32) & 0xFFFF) == 0
 
 
 if __name__ == "__main__":

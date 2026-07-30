@@ -616,6 +616,77 @@
         "15:0": "PC captured when the first outstanding fault is latched"
       }
     },
+    "CSR_FAULT_META": {
+      "address": "0x0014",
+      "bits": {
+        "31:0": "implementation-defined first-fault metadata; barrier faults store barrier_id in bits 2:0"
+      }
+    },
+    "CSR_CAP_MAGIC": {
+      "address": "0x0020",
+      "value": "0xaec06001",
+      "access": "read-only"
+    },
+    "CSR_CAP_VERSION": {
+      "address": "0x0024",
+      "bits": {
+        "31:16": "ISA major version",
+        "15:0": "ISA minor version"
+      },
+      "value": "0x00010000",
+      "access": "read-only"
+    },
+    "CSR_CAP_GEOMETRY": {
+      "address": "0x0028",
+      "bits": {
+        "7:0": "logical_warp_width",
+        "15:8": "physical_simd_lanes",
+        "23:16": "issue_beats_per_warp",
+        "31:24": "resident_warps_per_cu"
+      },
+      "value": "0x04040820",
+      "access": "read-only"
+    },
+    "CSR_CAP_FEATURES": {
+      "address": "0x002c",
+      "bits": {
+        "0": "fp8_e4m3fn",
+        "1": "f32",
+        "2": "sfu_rcp_f32",
+        "3": "sfu_exp2_f32",
+        "4": "mma_m16n16k16_e4m3_f32",
+        "5": "shfl",
+        "6": "reduce",
+        "7": "fence_cta_device",
+        "8": "bar_sync",
+        "9": "multiwarp",
+        "10": "multiblock_barrier_namespace"
+      },
+      "value": "0x000007ff",
+      "access": "read-only"
+    },
+    "CSR_CAP_LIMITS": {
+      "address": "0x0030",
+      "bits": {
+        "7:0": "max_gpr_index",
+        "15:8": "max_predicates",
+        "23:16": "max_barriers",
+        "31:24": "reserved"
+      },
+      "value": "0x000808ff",
+      "access": "read-only"
+    },
+    "CSR_CAP_MEMORY": {
+      "address": "0x0034",
+      "bits": {
+        "7:0": "address_window_bits",
+        "15:8": "minimum_hbm_ports",
+        "23:16": "hbm_bank_count",
+        "31:24": "reserved"
+      },
+      "value": "0x00200420",
+      "access": "read-only"
+    },
     "IMEM_WINDOW": {
       "address_range": "0x1000..0x1fff",
       "access": "32-bit host writes/readback into 128-bit instruction memory words"
@@ -637,7 +708,15 @@
       "shared_memory_bytes",
       "address_window_bits"
     ],
-    "unsupported_feature_error": "AEC_ERROR_UNSUPPORTED_FEATURE"
+    "unsupported_feature_error": "AEC_ERROR_UNSUPPORTED_FEATURE",
+    "csr_map": {
+      "magic": "CSR_CAP_MAGIC",
+      "version": "CSR_CAP_VERSION",
+      "geometry": "CSR_CAP_GEOMETRY",
+      "features": "CSR_CAP_FEATURES",
+      "limits": "CSR_CAP_LIMITS",
+      "memory": "CSR_CAP_MEMORY"
+    }
   },
   "inactive_lane_rule": "lanes disabled by active mask or predicate do not modify GPRs, predicates, memory, counters, or exception state"
 }

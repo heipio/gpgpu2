@@ -1,6 +1,6 @@
 {
   "schema": "aec_g_design_v0",
-  "status": "pre_rtl_readiness",
+  "status": "vitis_xo_packaged",
   "isa": {
     "name": "AEC-G",
     "version": "1.0",
@@ -44,6 +44,28 @@
     "requires_capability_check_before_module_load": true,
     "unsupported_feature_error": "AEC_ERROR_UNSUPPORTED_FEATURE",
     "cache_coherence_policy": "runtime soft/MMIO fence at H2D, launch, synchronize, and D2H boundaries until RTL exposes final register map",
+    "csr_map": {
+      "magic": "0x0020",
+      "version": "0x0024",
+      "geometry": "0x0028",
+      "features": "0x002c",
+      "limits": "0x0030",
+      "memory": "0x0034"
+    },
+    "capability_magic": "0xaec06001",
+    "capability_features": {
+      "fp8_e4m3fn": true,
+      "f32": true,
+      "sfu_rcp_f32": true,
+      "sfu_exp2_f32": true,
+      "mma_m16n16k16_e4m3_f32": true,
+      "shfl": true,
+      "reduce": true,
+      "fence_cta_device": true,
+      "bar_sync": true,
+      "multiwarp": true,
+      "multiblock_barrier_namespace": true
+    },
     "fence_subops": {
       "0": "CTA",
       "1": "DEVICE"
@@ -116,5 +138,38 @@
     "fp8_e4m3fn",
     "f32"
   ],
-  "driver_version": "pre_xdma_driver_skeleton"
+  "driver_version": "xrt_host_polling_skeleton",
+  "vitis_xrt_integration": {
+    "status": "ipxact_and_xo_packaged",
+    "kernel_name": "aec_gpgpu",
+    "compute_unit": "aec_gpgpu_1",
+    "top_module": "aec_soc_top",
+    "platform": "xilinx_u280_gen3x16_xdma_1_202211_1",
+    "validated_toolchain_target": {
+      "vitis_vivado": "2023.1",
+      "xrt": "2022.1 / 2.13.479"
+    },
+    "control_interface": "AXI4-Lite s_axi_control, CSR/IMEM window 0x0000..0x1fff",
+    "memory_interface": "four AXI4 masters m_axi_gmem0..3, 512-bit data each, mapped to HBM[0]..HBM[3]",
+    "host_driver": "driver/aec_xrt_host.cpp",
+    "kernel_metadata": "platform/kernel.xml",
+    "hbm_connectivity": "platform/connectivity.cfg",
+    "build_entry": "platform/Makefile",
+    "ipxact_component": "platform/ip_repo/aec_gpgpu_1_0/component.xml",
+    "xo_artifact": "bitstream/aec_gpgpu.hw.xo",
+    "xo_size_bytes": 90305,
+    "packager_warning_closure": {
+      "systemverilog_top_warning_ip_flow_19_5101": "closed by rtl/aec_soc_top.v Verilog wrapper over rtl/aec_soc_core.sv",
+      "axi_freq_hz_warning_ip_flow_19_3158": "closed by explicit FREQ_HZ clock/interface metadata",
+      "axi_clock_association_warning_ip_flow_19_5661": "closed by ASSOCIATED_BUSIF and ASSOCIATED_CLOCK Tcl metadata",
+      "axi_freq_propagation_warning_ip_flow_19_11770": "closed by explicit bus frequency metadata",
+      "remaining_note": "IP_Flow 19-5654 is info-level only: Verilog wrapper has SystemVerilog child sources"
+    },
+    "known_limits": [
+      "Full v++ hardware link/xclbin generation remains to be run in a long U280 build window.",
+      "Current CU/LSU has one in-order request stream routed to four top-level HBM AXI masters by addr[31:30]; full concurrent bandwidth still needs a multi-issue LSU or multiple CUs/memory requesters.",
+      "Host-side kernel-visible pointers are 32-bit window offsets; arbitrary XRT BO physical address truncation is not allowed.",
+      "Interrupt output is reserved; current host completion path polls CSR_STATUS."
+    ]
+  }
 }

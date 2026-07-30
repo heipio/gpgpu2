@@ -199,16 +199,16 @@ module tb_divergent_brx_system;
 
   task automatic seed_divergent_program;
     begin
-      write_instr(10'd0, 128'h00220000000000000000000800000000); // SSY 8
-      write_instr(10'd1, 128'h00080000000000140000001500000000); // SETP.eq P0, R20, R21
-      write_instr(10'd2, 128'h00218000000000000000000500000000); // BRX P0, 5
-      write_instr(10'd3, 128'h00020000000500050000000c00000001); // fallthrough: R5 += R12
-      write_instr(10'd4, 128'h00230000000000000000000000000000); // SYNC to reconverge
-      write_instr(10'd5, 128'h00020000000500050000000a00000001); // taken: R5 += R10
-      write_instr(10'd6, 128'h00230000000000000000000000000000); // SYNC to fallthrough
-      write_instr(10'd7, 128'h00000000000000000000000000000000); // skipped NOP
-      write_instr(10'd8, 128'h00110000000000020000000000050000); // ST [R2+0], R5
-      write_instr(10'd9, 128'h007f0000000000000000000000000000); // HALT
+      write_instr(10'd0, 128'h00420010000000000000000000000008); // SSY 8
+      write_instr(10'd1, 128'h00200010000000140000001500000000); // SETP.eq P0, R20, R21
+      write_instr(10'd2, 128'h00418010000000000000000000000005); // BRX P0, 5
+      write_instr(10'd3, 128'h00010010000500050000000c00000000); // fallthrough: R5 += R12
+      write_instr(10'd4, 128'h00430010000000000000000000000000); // SYNC to reconverge
+      write_instr(10'd5, 128'h00010010000500050000000a00000000); // taken: R5 += R10
+      write_instr(10'd6, 128'h00430010000000000000000000000000); // SYNC to fallthrough
+      write_instr(10'd7, 128'h00f00010000000000000000000000000); // skipped NOP
+      write_instr(10'd8, 128'h00310090000000020000000000050002); // ST [R2+0], R5
+      write_instr(10'd9, 128'h00450010000000000000000000000000); // HALT
     end
   endtask
 

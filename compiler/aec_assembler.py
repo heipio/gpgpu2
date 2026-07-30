@@ -412,26 +412,26 @@ class Assembler:
     def _encode_br(self, line: ParsedLine) -> Instruction:
         self._expect(line, 1)
         target = self._target(line.operands[0], line.line_no)
-        return self._inst(line, pred_ctrl=self._pred_ctrl(line), src2=target)
+        return self._inst(line, pred_ctrl=self._pred_ctrl(line), src3=target)
 
     def _encode_brx(self, line: ParsedLine) -> Instruction:
         self._expect(line, 2)
         pred_name = line.operands[0]
         target = self._target(line.operands[1], line.line_no)
         pred_ctrl = self._pred_ctrl(line, pred_override=pred_name)
-        return self._inst(line, pred_ctrl=pred_ctrl, src2=target)
+        return self._inst(line, pred_ctrl=pred_ctrl, src3=target)
 
     def _encode_target_only(self, line: ParsedLine) -> Instruction:
         self._expect(line, 1)
         target = self._target(line.operands[0], line.line_no)
-        return self._inst(line, pred_ctrl=self._pred_ctrl(line), src2=target)
+        return self._inst(line, pred_ctrl=self._pred_ctrl(line), src3=target)
 
     def _encode_bar(self, line: ParsedLine) -> Instruction:
         if len(line.operands) not in (1, 2):
             raise self._err(line.line_no, "BAR expects barrier_id[, expected_warps]")
         bid = self._parse_int(line.operands[0])
         expected = self._parse_int(line.operands[1]) if len(line.operands) == 2 else 0
-        return self._inst(line, pred_ctrl=self._pred_ctrl(line), src1=bid, src2=expected)
+        return self._inst(line, pred_ctrl=self._pred_ctrl(line), dst=bid, src2=expected)
 
     def _inst(self, line: ParsedLine, pred_ctrl: Optional[int] = None, **fields: int) -> Instruction:
         return Instruction(

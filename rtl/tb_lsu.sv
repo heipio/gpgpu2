@@ -79,6 +79,7 @@ module tb_lsu;
     .ex_src2_data_i(ex_src2_data_i),
     .ex_src3_data_i(ex_src3_data_i),
     .busy_o(busy_o),
+    .outstanding_o(),
     .load_valid_o(load_valid_o),
     .load_beat_o(load_beat_o),
     .load_dst_reg_o(load_dst_reg_o),

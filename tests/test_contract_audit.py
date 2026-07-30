@@ -206,6 +206,40 @@ def test_special_register_and_space_contracts_are_single_source_consistent():
         assert compiler.SPACE[name] == value
 
 
+def test_branch_targets_use_src3_or_immext_contract_field():
+    encoded = aec_assembler.Assembler().assemble_text("""
+start:
+  SSY done
+  BR target
+target:
+  @P2 BRX P2, done
+done:
+  HALT
+""")
+    for inst in encoded[:3]:
+        assert inst.src2 == 0
+    assert encoded[0].src3 == 3
+    assert encoded[1].src3 == 2
+    assert encoded[2].src3 == 3
+
+    ptx = """.version 9.3
+.target sm_80
+.address_size 64
+.visible .entry k()
+{
+bra done;
+done:
+ret;
+}
+"""
+    blob, report = compiler.Compiler().compile_text(ptx)
+    assert len(blob) % 16 == 0
+    branch = report["instructions"][0]
+    assert branch["mnemonic"] == "BRA"
+    assert branch["src2"] == 0
+    assert branch["src3"] == 1
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

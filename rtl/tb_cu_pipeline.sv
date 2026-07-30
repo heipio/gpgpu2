@@ -5,7 +5,7 @@ module tb_cu_pipeline;
   import aec_pkg::*;
 
   localparam logic [127:0] IADD_R1_R2_R3 =
-      128'h0002_0000_0001_0002_00000003_00000000;
+      128'h0001_0010_0001_0002_00000003_00000000;
 
   logic clk_i;
   logic rst_ni;

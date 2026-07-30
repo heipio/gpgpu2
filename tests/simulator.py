@@ -404,16 +404,16 @@ class AECGSimulator:
             self.halted = True
             return
         if m == "BRA":
-            self.pc = inst["src2"]
+            self.pc = inst["src3"]
             return
         if m == "BRX":
             if predicate is None:
-                self.pc = inst["src2"]
+                self.pc = inst["src3"]
             else:
-                self.brx(predicate, inst["src2"], self.pc + 1, negate=pred_negate)
+                self.brx(predicate, inst["src3"], self.pc + 1, negate=pred_negate)
             return
         if m == "SSY":
-            self.ssy(inst["src2"])
+            self.ssy(inst["src3"])
             return
         if m == "SYNC":
             self.sync()

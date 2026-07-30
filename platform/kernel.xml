@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root versionMajor="1" versionMinor="6">
+  <kernel name="aec_gpgpu" language="ip_c" vlnv="user.org:user:aec_gpgpu:1.0" attributes="user_managed">
+    <ports>
+      <port name="ap_clk" mode="master" range="1" dataWidth="1" portType="clock"/>
+      <port name="ap_rst_n" mode="master" range="1" dataWidth="1" portType="reset"/>
+      <port name="interrupt" mode="master" range="1" dataWidth="1" portType="interrupt"/>
+      <port name="s_axi_control" mode="slave" range="8192" dataWidth="32" portType="addressable" base="0x0"/>
+      <port name="m_axi_gmem0" mode="master" range="0x40000000" dataWidth="512" portType="addressable" base="0x00000000"/>
+      <port name="m_axi_gmem1" mode="master" range="0x40000000" dataWidth="512" portType="addressable" base="0x40000000"/>
+      <port name="m_axi_gmem2" mode="master" range="0x40000000" dataWidth="512" portType="addressable" base="0x80000000"/>
+      <port name="m_axi_gmem3" mode="master" range="0x40000000" dataWidth="512" portType="addressable" base="0xc0000000"/>
+    </ports>
+    <args>
+      <arg name="gmem0" addressQualifier="1" id="0" port="m_axi_gmem0" size="0x8" offset="0x40" hostOffset="0x0" hostSize="0x8" type="uint64_t*"/>
+      <arg name="gmem1" addressQualifier="1" id="1" port="m_axi_gmem1" size="0x8" offset="0x48" hostOffset="0x8" hostSize="0x8" type="uint64_t*"/>
+      <arg name="gmem2" addressQualifier="1" id="2" port="m_axi_gmem2" size="0x8" offset="0x50" hostOffset="0x10" hostSize="0x8" type="uint64_t*"/>
+      <arg name="gmem3" addressQualifier="1" id="3" port="m_axi_gmem3" size="0x8" offset="0x58" hostOffset="0x18" hostSize="0x8" type="uint64_t*"/>
+    </args>
+  </kernel>
+</root>

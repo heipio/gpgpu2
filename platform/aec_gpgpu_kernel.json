@@ -1,0 +1,63 @@
+{
+  "kernel_name": "aec_gpgpu",
+  "top_module": "aec_soc_top",
+  "platform": "xilinx_u280_gen3x16_xdma_1_202211_1",
+  "toolchain_validated": {
+    "vitis": "2023.1",
+    "vivado": "2023.1",
+    "xrt": "2022.1 / 2.13.479"
+  },
+  "interfaces": {
+    "control": {
+      "protocol": "AXI4-Lite target",
+      "bundle": "s_axi_control",
+      "address_range_bytes": 8192
+    },
+    "memory": {
+      "protocol": "AXI4 master",
+      "bundles": ["m_axi_gmem0", "m_axi_gmem1", "m_axi_gmem2", "m_axi_gmem3"],
+      "data_width_bits": 512,
+      "address_width_bits": 64,
+      "address_window_bits_used_by_kernel": 32,
+      "bank_select": "addr[31:30]",
+      "bank_offset": "addr[29:0]"
+    }
+  },
+  "hbm_mapping": {
+    "connectivity_file": "platform/connectivity.cfg",
+    "mapping": {
+      "m_axi_gmem0": "HBM[0]",
+      "m_axi_gmem1": "HBM[1]",
+      "m_axi_gmem2": "HBM[2]",
+      "m_axi_gmem3": "HBM[3]"
+    },
+    "note": "The SoC top exposes four Vitis-visible AXI masters. The current CU/LSU still issues one in-order memory request stream, which the top-level router maps by addr[31:30]."
+  },
+  "address_window_layout": {
+    "HBM0": "0x00000000..0x3fffffff",
+    "HBM1": "0x40000000..0x7fffffff",
+    "HBM2": "0x80000000..0xbfffffff",
+    "HBM3": "0xc0000000..0xffffffff"
+  },
+  "csr_map": {
+    "CSR_CTRL": "0x0000",
+    "CSR_PC": "0x0004",
+    "CSR_STATUS": "0x0008",
+    "CSR_FAULT_CODE": "0x000c",
+    "CSR_FAULT_PC": "0x0010",
+    "CSR_FAULT_META": "0x0014",
+    "CSR_CAP_MAGIC": "0x0020",
+    "CSR_CAP_VERSION": "0x0024",
+    "CSR_CAP_GEOMETRY": "0x0028",
+    "CSR_CAP_FEATURES": "0x002c",
+    "CSR_CAP_LIMITS": "0x0030",
+    "CSR_CAP_MEMORY": "0x0034",
+    "IMEM_WINDOW": "0x1000..0x1fff"
+  },
+  "capability_expected": {
+    "magic": "0xaec06001",
+    "version": "0x00010000",
+    "geometry": "0x04040820",
+    "features_required_mask": "0x000007ff"
+  }
+}
