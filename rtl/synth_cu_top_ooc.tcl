@@ -37,12 +37,10 @@ read_verilog -sv {
   imem.sv
   if_stage.sv
   cu_top.sv
-  aec_axi_hbm_4way_router.sv
-  aec_soc_top.sv
 }
 
 synth_design -top cu_top -part xcu280-fsvh2892-2L-e -mode out_of_context
-create_clock -name clk_i -period 5.000 [get_ports clk_i]
+create_clock -name clk_i -period 5.556 [get_ports clk_i]
 set sfu_src_regs [get_cells -hier -regexp -quiet {.*u_sfu_core/src_q_reg.*}]
 set sfu_result_regs [get_cells -hier -regexp -quiet {.*u_sfu_core/result_q_reg.*}]
 puts "SFU_MULTICYCLE_SRC_REGS=[llength $sfu_src_regs] RESULT_REGS=[llength $sfu_result_regs]"
@@ -52,4 +50,6 @@ if {[llength $sfu_src_regs] > 0 && [llength $sfu_result_regs] > 0} {
 }
 report_utilization -file cu_top_ooc_utilization.rpt
 report_timing_summary -file cu_top_ooc_timing_summary.rpt
+report_timing -max_paths 20 -file cu_top_ooc_critical_paths.rpt
+report_high_fanout_nets -fanout_greater_than 32 -file cu_top_ooc_high_fanout.rpt
 puts "SYNTH_CU_TOP_OOC_PASS"

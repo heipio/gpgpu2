@@ -43,17 +43,23 @@ module sfu_core #(
   logic [7:0]  mask_q;
   logic [7:0]  dst_q;
   logic [7:0][31:0] src_q;
-  logic [7:0][31:0] result_comb;
+  logic        launch_q;
+  logic [7:0]  lane_result_valid;
+  logic [7:0][31:0] lane_result;
   logic [7:0][31:0] result_q;
 
   genvar lane;
   generate
     for (lane = 0; lane < PHYSICAL_SIMD_LANES; lane = lane + 1) begin : g_sfu_lane
       sfu_lane u_sfu_lane (
+        .clk_i(clk_i),
+        .rst_ni(rst_ni),
+        .start_i(launch_q),
         .opcode_i(AEC_OP_SFU),
         .subop_i(subop_q),
         .src_val_i(src_q[lane]),
-        .result_o(result_comb[lane])
+        .result_valid_o(lane_result_valid[lane]),
+        .result_o(lane_result[lane])
       );
     end
   endgenerate
@@ -78,6 +84,7 @@ module sfu_core #(
       mask_q <= 8'd0;
       dst_q <= 8'd0;
       src_q <= '0;
+      launch_q <= 1'b0;
       result_q <= '0;
     end else begin
       unique case (state_q)
@@ -89,14 +96,21 @@ module sfu_core #(
             mask_q <= active_mask_i;
             dst_q <= dst_reg_i;
             src_q <= src_data_i;
+            launch_q <= 1'b1;
             wait_count_q <= COMPUTE_LATENCY_CYCLES;
             state_q <= SFU_WAIT;
           end
         end
         SFU_WAIT: begin
+          launch_q <= 1'b0;
+          // All physical lanes share the same three-stage valid pipeline.
+          // Capture after its registered pack stage, then retain data until
+          // the architected fixed-latency completion point.
+          if (lane_result_valid[0]) begin
+            result_q <= lane_result;
+          end
           if (wait_count_q <= {{(LATENCY_BITS-1){1'b0}}, 1'b1}) begin
             wait_count_q <= '0;
-            result_q <= result_comb;
             state_q <= SFU_WRITE;
           end else begin
             wait_count_q <= wait_count_q - {{(LATENCY_BITS-1){1'b0}}, 1'b1};

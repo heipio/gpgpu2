@@ -7,6 +7,12 @@ __pycache__/
 .ruff_cache/
 *.log
 tmp_*
+*.jou
+*.pb
+*.wdb
+.Xil/
+_x/
+xsim.dir/
 
 build/
 dist/

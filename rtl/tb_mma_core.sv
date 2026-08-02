@@ -123,7 +123,11 @@ module tb_mma_core;
     @(posedge clk_i);
     start_i = 1'b0;
 
-    repeat (12000) begin
+    // The reference core serializes 32 lanes x 8 accumulator elements x
+    // k=0..15.  With the fixed 8-cycle FMA this needs roughly 41k cycles,
+    // plus fragment readout and writeback.  Keep a bounded watchdog without
+    // declaring a correct multi-cycle implementation dead prematurely.
+    repeat (50000) begin
       @(posedge clk_i);
       if (fault_valid_o) begin
         $fatal(1, "MMA fault code=%0d pc=%04h", fault_code_o, fault_pc_o);

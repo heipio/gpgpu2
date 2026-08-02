@@ -235,8 +235,6 @@ module mma_core #(
     end
   end
 
-  integer init_lane;
-  integer init_idx;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       state_q <= MMA_IDLE;
@@ -256,16 +254,6 @@ module mma_core #(
       fma_a_q <= 32'd0;
       fma_b_q <= 32'd0;
       fma_c_q <= 32'd0;
-      for (init_lane = 0; init_lane < 32; init_lane = init_lane + 1) begin
-        for (init_idx = 0; init_idx < 2; init_idx = init_idx + 1) begin
-          a_pack_q[init_lane][init_idx] <= 32'd0;
-          b_pack_q[init_lane][init_idx] <= 32'd0;
-        end
-        for (init_idx = 0; init_idx < 8; init_idx = init_idx + 1) begin
-          c_frag_q[init_lane][init_idx] <= 32'd0;
-          d_frag_q[init_lane][init_idx] <= 32'd0;
-        end
-      end
     end else begin
       unique case (state_q)
         MMA_IDLE: begin

@@ -33,6 +33,10 @@ module csr_regfile #(
   input  wire logic [31:0]               fault_meta_i,
   output logic                           start_pulse_o,
   output logic [15:0]                    start_pc_o,
+  output logic [31:0]                    launch_grid_x_o,
+  output logic [31:0]                    launch_block_x_o,
+  output logic [31:0]                    launch_param_base_o,
+  output logic [31:0]                    launch_dynamic_smem_o,
 
   output logic                           imem_we_o,
   output logic [9:0]                     imem_word_addr_o,
@@ -55,6 +59,10 @@ module csr_regfile #(
   localparam logic [AXI_ADDR_WIDTH-1:0] CSR_CAP_FEATURES_ADDR = 'h002c;
   localparam logic [AXI_ADDR_WIDTH-1:0] CSR_CAP_LIMITS_ADDR = 'h0030;
   localparam logic [AXI_ADDR_WIDTH-1:0] CSR_CAP_MEMORY_ADDR = 'h0034;
+  localparam logic [AXI_ADDR_WIDTH-1:0] CSR_LAUNCH_GRID_X_ADDR = 'h0040;
+  localparam logic [AXI_ADDR_WIDTH-1:0] CSR_LAUNCH_BLOCK_X_ADDR = 'h0044;
+  localparam logic [AXI_ADDR_WIDTH-1:0] CSR_LAUNCH_PARAM_BASE_ADDR = 'h0048;
+  localparam logic [AXI_ADDR_WIDTH-1:0] CSR_LAUNCH_DYNAMIC_SMEM_ADDR = 'h004c;
   localparam logic [AXI_ADDR_WIDTH-1:0] IMEM_BASE_ADDR = 'h1000;
   localparam logic [AXI_ADDR_WIDTH-1:0] IMEM_LAST_ADDR = 'h1fff;
   localparam logic [31:0] CAP_MAGIC = 32'haec0_6001;
@@ -70,6 +78,10 @@ module csr_regfile #(
   logic                     aw_seen_q;
   logic                     w_seen_q;
   logic [15:0]              start_pc_q;
+  logic [31:0]              launch_grid_x_q;
+  logic [31:0]              launch_block_x_q;
+  logic [31:0]              launch_param_base_q;
+  logic [31:0]              launch_dynamic_smem_q;
   logic                     done_q;
   logic                     fault_q;
   aec_fault_e               fault_code_q;
@@ -84,6 +96,10 @@ module csr_regfile #(
   wire write_is_fault_pc = (awaddr_q == CSR_FAULT_PC_ADDR);
   wire write_is_fault_meta = (awaddr_q == CSR_FAULT_META_ADDR);
   wire write_is_imem = (awaddr_q >= IMEM_BASE_ADDR) && (awaddr_q <= IMEM_LAST_ADDR);
+  wire write_is_launch_grid_x = (awaddr_q == CSR_LAUNCH_GRID_X_ADDR);
+  wire write_is_launch_block_x = (awaddr_q == CSR_LAUNCH_BLOCK_X_ADDR);
+  wire write_is_launch_param_base = (awaddr_q == CSR_LAUNCH_PARAM_BASE_ADDR);
+  wire write_is_launch_dynamic_smem = (awaddr_q == CSR_LAUNCH_DYNAMIC_SMEM_ADDR);
   wire write_imem_strobe_ok = !write_is_imem || (wstrb_q == 4'hf);
   wire read_is_ctrl = (s_axil_araddr == CSR_CTRL_ADDR);
   wire read_is_pc = (s_axil_araddr == CSR_PC_ADDR);
@@ -97,15 +113,27 @@ module csr_regfile #(
   wire read_is_cap_features = (s_axil_araddr == CSR_CAP_FEATURES_ADDR);
   wire read_is_cap_limits = (s_axil_araddr == CSR_CAP_LIMITS_ADDR);
   wire read_is_cap_memory = (s_axil_araddr == CSR_CAP_MEMORY_ADDR);
+  wire read_is_launch_grid_x = (s_axil_araddr == CSR_LAUNCH_GRID_X_ADDR);
+  wire read_is_launch_block_x = (s_axil_araddr == CSR_LAUNCH_BLOCK_X_ADDR);
+  wire read_is_launch_param_base = (s_axil_araddr == CSR_LAUNCH_PARAM_BASE_ADDR);
+  wire read_is_launch_dynamic_smem = (s_axil_araddr == CSR_LAUNCH_DYNAMIC_SMEM_ADDR);
   wire read_is_imem = (s_axil_araddr >= IMEM_BASE_ADDR) && (s_axil_araddr <= IMEM_LAST_ADDR);
   wire write_is_known = write_is_ctrl || write_is_pc || write_is_status ||
-      write_is_fault_code || write_is_fault_pc || write_is_fault_meta || write_is_imem;
+      write_is_fault_code || write_is_fault_pc || write_is_fault_meta || write_is_imem ||
+      write_is_launch_grid_x || write_is_launch_block_x || write_is_launch_param_base ||
+      write_is_launch_dynamic_smem;
   wire read_is_known = read_is_ctrl || read_is_pc || read_is_status ||
       read_is_fault_code || read_is_fault_pc || read_is_fault_meta ||
       read_is_cap_magic || read_is_cap_version || read_is_cap_geometry ||
-      read_is_cap_features || read_is_cap_limits || read_is_cap_memory || read_is_imem;
+      read_is_cap_features || read_is_cap_limits || read_is_cap_memory ||
+      read_is_launch_grid_x || read_is_launch_block_x || read_is_launch_param_base ||
+      read_is_launch_dynamic_smem || read_is_imem;
 
   assign start_pc_o = start_pc_q;
+  assign launch_grid_x_o = launch_grid_x_q;
+  assign launch_block_x_o = launch_block_x_q;
+  assign launch_param_base_o = launch_param_base_q;
+  assign launch_dynamic_smem_o = launch_dynamic_smem_q;
   assign imem_word_addr_o = (awaddr_q - IMEM_BASE_ADDR) >> 2;
   assign imem_wdata_o = wdata_q;
   assign imem_wstrb_o = wstrb_q;
@@ -127,6 +155,10 @@ module csr_regfile #(
       aw_seen_q      <= 1'b0;
       w_seen_q       <= 1'b0;
       start_pc_q     <= 16'd0;
+      launch_grid_x_q <= 32'd1;
+      launch_block_x_q <= 32'd32;
+      launch_param_base_q <= 32'd0;
+      launch_dynamic_smem_q <= 32'd0;
       done_q         <= 1'b0;
       fault_q        <= 1'b0;
       fault_code_q   <= AEC_FAULT_NONE;
@@ -184,6 +216,14 @@ module csr_regfile #(
           end
         end else if (write_is_pc) begin
           start_pc_q <= wdata_q[15:0];
+        end else if (write_is_launch_grid_x) begin
+          launch_grid_x_q <= wdata_q;
+        end else if (write_is_launch_block_x) begin
+          launch_block_x_q <= wdata_q;
+        end else if (write_is_launch_param_base) begin
+          launch_param_base_q <= wdata_q;
+        end else if (write_is_launch_dynamic_smem) begin
+          launch_dynamic_smem_q <= wdata_q;
         end else if (write_is_status) begin
           if (wdata_q[1]) begin
             done_q <= 1'b0;
@@ -230,6 +270,14 @@ module csr_regfile #(
           s_axil_rdata <= CAP_LIMITS;
         end else if (read_is_cap_memory) begin
           s_axil_rdata <= CAP_MEMORY;
+        end else if (read_is_launch_grid_x) begin
+          s_axil_rdata <= launch_grid_x_q;
+        end else if (read_is_launch_block_x) begin
+          s_axil_rdata <= launch_block_x_q;
+        end else if (read_is_launch_param_base) begin
+          s_axil_rdata <= launch_param_base_q;
+        end else if (read_is_launch_dynamic_smem) begin
+          s_axil_rdata <= launch_dynamic_smem_q;
         end else if (read_is_imem) begin
           s_axil_rdata <= imem_rdata_i;
         end else begin

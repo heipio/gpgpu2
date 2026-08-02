@@ -1,0 +1,31 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2023.2 (win64) Build 4029153 Fri Oct 13 20:14:34 MDT 2023
+| Date         : Sat Aug  1 21:17:59 2026
+| Host         : DESKTOP-UC4CGNF running 64-bit major release  (build 9200)
+| Command      : report_high_fanout_nets -fanout_greater_than 32 -file cu_top_ooc_high_fanout.rpt
+| Design       : cu_top
+| Device       : xcu280
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+High Fan-out Nets Information
+
+1. Summary
+----------
+
++--------------------------------------------------+--------+-------------+
+| Net Name                                         | Fanout | Driver Type |
++--------------------------------------------------+--------+-------------+
+| u_ex_stage/g_simt_stack[3].u_simt_stack/rst_ni_0 |  15814 | LUT1        |
+| u_mma_core/Q[0]                                  |   7381 | FDCE        |
+| u_mma_core/Q[1]                                  |   7347 | FDCE        |
+| u_mma_core/read_slot_q[0]                        |   2342 | FDCE        |
+| u_mma_core/write_beat_q_reg[1]_0[0]              |   2053 | FDCE        |
+| u_mma_core/write_beat_q_reg[1]_0[1]              |   2052 | FDCE        |
+| u_sfu_core/launch_q_reg_n_0                      |   1556 | FDCE        |
+| u_mma_core/read_slot_q[1]                        |   1088 | FDCE        |
+| u_mma_core/read_slot_q[2]                        |   1057 | FDCE        |
+| u_warp_collective_core/out_val_q                 |   1024 | LUT5        |
++--------------------------------------------------+--------+-------------+
+
+

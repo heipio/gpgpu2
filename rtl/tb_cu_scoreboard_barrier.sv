@@ -224,6 +224,8 @@ module tb_cu_scoreboard_barrier;
     write_instr(3, ADD_R3_R2_1);
     write_instr(4, HALT_INSTR);
     axil_write(64'h0004, 32'd0);
+    axil_write(64'h0040, 32'd1);
+    axil_write(64'h0044, 32'd64);
     axil_write(64'h0000, 32'd1);
 
     for (poll = 0; poll < 500; poll = poll + 1) begin

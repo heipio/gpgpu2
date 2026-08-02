@@ -22,6 +22,8 @@ module tb_soc_host_lifecycle;
       128'h0034_0100_0000_0000_00000000_00000000;
   localparam logic [127:0] HALT_INSTR =
       128'h0045_0000_0000_0000_00000000_00000000;
+  localparam logic [127:0] NOP_INSTR =
+      128'h00f0_0000_0000_0000_00000000_00000000;
 
   logic ap_clk;
   logic ap_rst_n;
@@ -102,31 +104,58 @@ module tb_soc_host_lifecycle;
     .s_axi_control_rresp(s_axi_control_rresp),
     .s_axi_control_rvalid(s_axi_control_rvalid),
     .s_axi_control_rready(s_axi_control_rready),
-    .m_axi_gmem_awaddr(m_axi_gmem_awaddr),
-    .m_axi_gmem_awlen(m_axi_gmem_awlen),
-    .m_axi_gmem_awsize(m_axi_gmem_awsize),
-    .m_axi_gmem_awburst(m_axi_gmem_awburst),
-    .m_axi_gmem_awvalid(m_axi_gmem_awvalid),
-    .m_axi_gmem_awready(m_axi_gmem_awready),
-    .m_axi_gmem_wdata(m_axi_gmem_wdata),
-    .m_axi_gmem_wstrb(m_axi_gmem_wstrb),
-    .m_axi_gmem_wlast(m_axi_gmem_wlast),
-    .m_axi_gmem_wvalid(m_axi_gmem_wvalid),
-    .m_axi_gmem_wready(m_axi_gmem_wready),
-    .m_axi_gmem_bresp(m_axi_gmem_bresp),
-    .m_axi_gmem_bvalid(m_axi_gmem_bvalid),
-    .m_axi_gmem_bready(m_axi_gmem_bready),
-    .m_axi_gmem_araddr(m_axi_gmem_araddr),
-    .m_axi_gmem_arlen(m_axi_gmem_arlen),
-    .m_axi_gmem_arsize(m_axi_gmem_arsize),
-    .m_axi_gmem_arburst(m_axi_gmem_arburst),
-    .m_axi_gmem_arvalid(m_axi_gmem_arvalid),
-    .m_axi_gmem_arready(m_axi_gmem_arready),
-    .m_axi_gmem_rdata(m_axi_gmem_rdata),
-    .m_axi_gmem_rresp(m_axi_gmem_rresp),
-    .m_axi_gmem_rlast(m_axi_gmem_rlast),
-    .m_axi_gmem_rvalid(m_axi_gmem_rvalid),
-    .m_axi_gmem_rready(m_axi_gmem_rready),
+    .m_axi_gmem0_awaddr(m_axi_gmem_awaddr),
+    .m_axi_gmem0_awlen(m_axi_gmem_awlen),
+    .m_axi_gmem0_awsize(m_axi_gmem_awsize),
+    .m_axi_gmem0_awburst(m_axi_gmem_awburst),
+    .m_axi_gmem0_awvalid(m_axi_gmem_awvalid),
+    .m_axi_gmem0_awready(m_axi_gmem_awready),
+    .m_axi_gmem0_wdata(m_axi_gmem_wdata),
+    .m_axi_gmem0_wstrb(m_axi_gmem_wstrb),
+    .m_axi_gmem0_wlast(m_axi_gmem_wlast),
+    .m_axi_gmem0_wvalid(m_axi_gmem_wvalid),
+    .m_axi_gmem0_wready(m_axi_gmem_wready),
+    .m_axi_gmem0_bresp(m_axi_gmem_bresp),
+    .m_axi_gmem0_bvalid(m_axi_gmem_bvalid),
+    .m_axi_gmem0_bready(m_axi_gmem_bready),
+    .m_axi_gmem0_araddr(m_axi_gmem_araddr),
+    .m_axi_gmem0_arlen(m_axi_gmem_arlen),
+    .m_axi_gmem0_arsize(m_axi_gmem_arsize),
+    .m_axi_gmem0_arburst(m_axi_gmem_arburst),
+    .m_axi_gmem0_arvalid(m_axi_gmem_arvalid),
+    .m_axi_gmem0_arready(m_axi_gmem_arready),
+    .m_axi_gmem0_rdata(m_axi_gmem_rdata),
+    .m_axi_gmem0_rresp(m_axi_gmem_rresp),
+    .m_axi_gmem0_rlast(m_axi_gmem_rlast),
+    .m_axi_gmem0_rvalid(m_axi_gmem_rvalid),
+    .m_axi_gmem0_rready(m_axi_gmem_rready),
+    .m_axi_gmem1_awready(1'b1),
+    .m_axi_gmem1_wready(1'b1),
+    .m_axi_gmem1_bresp(2'b00),
+    .m_axi_gmem1_bvalid(1'b0),
+    .m_axi_gmem1_arready(1'b1),
+    .m_axi_gmem1_rdata(512'd0),
+    .m_axi_gmem1_rresp(2'b00),
+    .m_axi_gmem1_rlast(1'b1),
+    .m_axi_gmem1_rvalid(1'b0),
+    .m_axi_gmem2_awready(1'b1),
+    .m_axi_gmem2_wready(1'b1),
+    .m_axi_gmem2_bresp(2'b00),
+    .m_axi_gmem2_bvalid(1'b0),
+    .m_axi_gmem2_arready(1'b1),
+    .m_axi_gmem2_rdata(512'd0),
+    .m_axi_gmem2_rresp(2'b00),
+    .m_axi_gmem2_rlast(1'b1),
+    .m_axi_gmem2_rvalid(1'b0),
+    .m_axi_gmem3_awready(1'b1),
+    .m_axi_gmem3_wready(1'b1),
+    .m_axi_gmem3_bresp(2'b00),
+    .m_axi_gmem3_bvalid(1'b0),
+    .m_axi_gmem3_arready(1'b1),
+    .m_axi_gmem3_rdata(512'd0),
+    .m_axi_gmem3_rresp(2'b00),
+    .m_axi_gmem3_rlast(1'b1),
+    .m_axi_gmem3_rvalid(1'b0),
     .interrupt(interrupt)
   );
 
@@ -193,14 +222,21 @@ module tb_soc_host_lifecycle;
 
   logic [31:0] read_value;
   logic [31:0] ctrl;
+  logic [31:0] fault_code;
+  logic [31:0] fault_pc;
+  logic [31:0] fault_meta;
   logic saw_fence;
+  logic store_response_seen_q;
   integer poll;
 
   always_ff @(posedge ap_clk or negedge ap_rst_n) begin
     if (!ap_rst_n) begin
       saw_fence <= 1'b0;
-    end else if (dut.u_cu_top.fence_arrive_valid) begin
+      store_response_seen_q <= 1'b0;
+    end else if (dut.u_aec_soc_core.u_cu_top.fence_arrive_valid) begin
       saw_fence <= 1'b1;
+    end else if (m_axi_gmem_bvalid && m_axi_gmem_bready) begin
+      store_response_seen_q <= 1'b1;
     end
   end
 
@@ -250,6 +286,10 @@ module tb_soc_host_lifecycle;
     write_instr(6, ST_C_R3);
     write_instr(7, FENCE_DEVICE);
     write_instr(8, HALT_INSTR);
+    // IMEM has a one-cycle synchronous read.  AEC modules reserve a NOP
+    // landing word after HALT so speculative front-end fetch cannot decode
+    // uninitialized storage before the HALT retirement feedback arrives.
+    write_instr(9, NOP_INSTR);
 
     axi_lite_write(64'h0004, 32'd0);
     axi_lite_write(64'h0000, 32'd1);
@@ -257,12 +297,16 @@ module tb_soc_host_lifecycle;
     for (poll = 0; poll < 2000; poll = poll + 1) begin
       axi_lite_read(64'h0000, ctrl);
       if (ctrl[2]) begin
-        $fatal(1, "GPU fault observed");
+        axi_lite_read(64'h000c, fault_code);
+        axi_lite_read(64'h0010, fault_pc);
+        axi_lite_read(64'h0014, fault_meta);
+        $fatal(1, "GPU fault code=%0h pc=%0h meta=%0h", fault_code, fault_pc, fault_meta);
       end
       if (ctrl[1]) begin
         host_mm_read32(32'h3000, read_value);
         assert (read_value == 32'd579) else $fatal(1, "result mismatch: %0d", read_value);
         assert (saw_fence) else $fatal(1, "FENCE instruction was not observed");
+        assert (store_response_seen_q) else $fatal(1, "DONE preceded the final AXI B response");
         $display("SOC_HOST_LIFECYCLE TEST PASSED");
         $finish;
       end

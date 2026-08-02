@@ -1,6 +1,6 @@
 {
   "schema": "aec_g_design_v0",
-  "status": "vitis_xo_packaged",
+  "status": "vitis_hw_link_routed_180mhz",
   "isa": {
     "name": "AEC-G",
     "version": "1.0",
@@ -150,7 +150,7 @@
       "xrt": "2022.1 / 2.13.479"
     },
     "control_interface": "AXI4-Lite s_axi_control, CSR/IMEM window 0x0000..0x1fff",
-    "memory_interface": "four AXI4 masters m_axi_gmem0..3, 512-bit data each, mapped to HBM[0]..HBM[3]",
+    "memory_interface": "four AXI4 masters m_axi_gmem0..3, 512-bit data each, mapped to HBM[16]..HBM[19] in the routed Variant B",
     "host_driver": "driver/aec_xrt_host.cpp",
     "kernel_metadata": "platform/kernel.xml",
     "hbm_connectivity": "platform/connectivity.cfg",
@@ -158,6 +158,28 @@
     "ipxact_component": "platform/ip_repo/aec_gpgpu_1_0/component.xml",
     "xo_artifact": "bitstream/aec_gpgpu.hw.xo",
     "xo_size_bytes": 90305,
+    "routed_variant_b": {
+      "slr": "SLR1",
+      "hbm_pseudo_channels": [16, 17, 18, 19],
+      "kernel_clock_mhz": 180,
+      "toolchain": "Vivado/Vitis 2023.1 local validation; final evidence requires the contest-locked 2022.2 flow",
+      "xclbin": "bitstream/aec_gpgpu.slr1_hbm16.hw.xclbin",
+      "xclbin_size_bytes": 54178686,
+      "debug_ltx": "bitstream/aec_gpgpu.slr1_hbm16.hw.ltx",
+      "xclbin_info": "bitstream/aec_gpgpu.slr1_hbm16.hw.xclbin.info",
+      "timing_report": "reports/routed_slr1_hbm16/impl_1_hw_bb_locked_timing_summary_routed.rpt",
+      "slr_utilization_report": "reports/routed_slr1_hbm16/impl_1_slr_util_routed.rpt",
+      "overall_wns_ns": 0.001,
+      "kernel_180mhz_wns_ns": 0.05,
+      "tns_ns": 0.0,
+      "routed_sll_count": 14959
+    },
+    "baseline_variant_a": {
+      "connectivity": "platform/connectivity.slr0_hbm0_3.cfg",
+      "slr": "SLR0",
+      "hbm_pseudo_channels": [0, 1, 2, 3],
+      "status": "preserved configuration; no same-stage routed A/B comparison has been rerun"
+    },
     "packager_warning_closure": {
       "systemverilog_top_warning_ip_flow_19_5101": "closed by rtl/aec_soc_top.v Verilog wrapper over rtl/aec_soc_core.sv",
       "axi_freq_hz_warning_ip_flow_19_3158": "closed by explicit FREQ_HZ clock/interface metadata",
@@ -166,7 +188,6 @@
       "remaining_note": "IP_Flow 19-5654 is info-level only: Verilog wrapper has SystemVerilog child sources"
     },
     "known_limits": [
-      "Full v++ hardware link/xclbin generation remains to be run in a long U280 build window.",
       "Current CU/LSU has one in-order request stream routed to four top-level HBM AXI masters by addr[31:30]; full concurrent bandwidth still needs a multi-issue LSU or multiple CUs/memory requesters.",
       "Host-side kernel-visible pointers are 32-bit window offsets; arbitrary XRT BO physical address truncation is not allowed.",
       "Interrupt output is reserved; current host completion path polls CSR_STATUS."
