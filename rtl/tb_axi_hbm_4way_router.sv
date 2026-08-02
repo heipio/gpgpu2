@@ -170,6 +170,8 @@ module tb_axi_hbm_4way_router;
       while (!s_awready_o) @(negedge clk_i);
       @(negedge clk_i);
       s_awvalid_i = 1'b0;
+      // Deliberately disturb AWADDR before W: W must follow the captured AW bank.
+      s_awaddr_i = 64'h0000_0000_c000_0000;
       s_wdata_i = data;
       s_wvalid_i = 1'b1;
       while (!s_wready_o) @(negedge clk_i);
@@ -230,8 +232,8 @@ module tb_axi_hbm_4way_router;
 
   initial begin
     #10000;
-    $fatal(1, "AXI HBM router test timeout phase=%0d write_state=%0d read_state=%0d", phase_q,
-        dut.write_state_q, dut.read_state_q);
+    $fatal(1, "AXI HBM router test timeout phase=%0d write_bank=%0d read_bank=%0d", phase_q,
+        dut.write_bank_q, dut.read_bank_q);
   end
 endmodule
 

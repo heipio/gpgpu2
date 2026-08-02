@@ -22,6 +22,7 @@ sources=(
 tests=(
   tb_soc_host_lifecycle tb_cu_multiwarp tb_cu_scoreboard_barrier
   tb_warp_scheduler_dispatch tb_mma_core tb_sfu_core tb_fpu_collective
+  tb_axi_hbm_4way_router
 )
 
 for source in "${sources[@]}"; do

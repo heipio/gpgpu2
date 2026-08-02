@@ -93,34 +93,14 @@ module cu_top #(
   logic [WARP_BITS-1:0] sched_fetch_warp;
   logic [15:0] sched_fetch_pc;
   logic [31:0] sched_fetch_mask;
-  logic [31:0] sched_fetch_ctaid_x;
-  logic [31:0] sched_fetch_warpid;
-  logic [7:0] sched_fetch_epoch;
-  logic [7:0] sched_epoch_query;
   logic [NUM_WARPS-1:0] sched_live_warps;
   logic [NUM_WARPS-1:0] sched_stall_mask;
   logic        sched_all_done;
   logic        sched_halt_valid;
   logic [WARP_BITS-1:0] sched_halt_warp;
   logic [31:0] sched_halt_mask;
-  logic        sched_halt_pending;
-  logic [WARP_BITS-1:0] sched_halt_pending_warp;
   logic [WARP_BITS-1:0] instr_src_warp;
   logic [31:0] instr_src_mask;
-  logic [31:0] instr_src_ctaid_x;
-  logic [31:0] instr_src_warpid;
-  logic [7:0] instr_src_epoch;
-  logic fetch_tag_valid_q;
-  logic fetch_tag_data_ready_q;
-  logic [WARP_BITS-1:0] fetch_tag_warp_q;
-  logic [15:0] fetch_tag_pc_q;
-  logic [31:0] fetch_tag_mask_q;
-  logic [31:0] fetch_tag_ctaid_x_q;
-  logic [31:0] fetch_tag_warpid_q;
-  logic [7:0] fetch_tag_epoch_q;
-  logic fetch_req_fire;
-  logic fetch_resp_epoch_match;
-  logic fetch_resp_valid;
   logic issue_busy;
   aec_opcode_e decoded_opcode;
   logic [15:0] pred_ctrl;
@@ -144,8 +124,6 @@ module cu_top #(
   logic        issue_fire;
   logic [WARP_BITS-1:0] issue_warp_q;
   logic [31:0] issue_logical_active_mask_q;
-  logic [31:0] issue_ctaid_x_q;
-  logic [31:0] issue_warpid_q;
   logic [1:0]  issue_beat;
   logic [7:0]  issue_active_mask;
   logic [15:0] issue_opcode_q;
@@ -218,10 +196,6 @@ module cu_top #(
   logic [7:0]  prf_write_mask;
   logic        csr_start_pulse;
   logic [15:0] csr_start_pc;
-  logic [31:0] csr_launch_grid_x;
-  logic [31:0] csr_launch_block_x;
-  logic [31:0] csr_launch_param_base;
-  logic [31:0] csr_launch_dynamic_smem;
   logic        imem_axil_we;
   logic [9:0]  imem_axil_word_addr;
   logic [31:0] imem_axil_wdata;
@@ -230,7 +204,6 @@ module cu_top #(
   logic [31:0] imem_axil_rdata;
   logic        gpu_running_q;
   logic        gpu_done_pulse;
-  logic        halt_inflight;
   logic        if_enable;
   logic        fault_valid;
   aec_fault_e fault_code;
@@ -403,10 +376,6 @@ module cu_top #(
     .fault_meta_i(fault_meta),
     .start_pulse_o(csr_start_pulse),
     .start_pc_o(csr_start_pc),
-    .launch_grid_x_o(csr_launch_grid_x),
-    .launch_block_x_o(csr_launch_block_x),
-    .launch_param_base_o(csr_launch_param_base),
-    .launch_dynamic_smem_o(csr_launch_dynamic_smem),
     .imem_we_o(imem_axil_we),
     .imem_word_addr_o(imem_axil_word_addr),
     .imem_wdata_o(imem_axil_wdata),
@@ -427,11 +396,7 @@ module cu_top #(
     .if_data_o(imem_data)
   );
 
-  // Keep the XPM read address stable for the complete tagged response.  The
-  // scheduler advances its PC on request acceptance, so using its live PC
-  // here would associate the next instruction word with the old fetch tag.
-  assign imem_addr = USE_EXTERNAL_INSTR ? if_imem_addr :
-      (fetch_tag_valid_q ? fetch_tag_pc_q[9:0] : sched_fetch_pc[9:0]);
+  assign imem_addr = USE_EXTERNAL_INSTR ? if_imem_addr : sched_fetch_pc[9:0];
 
   if_stage u_if_stage (
     .clk_i(clk_i),
@@ -458,9 +423,7 @@ module cu_top #(
     .start_i(csr_start_pulse && !USE_EXTERNAL_INSTR),
     .start_pc_i(csr_start_pc),
     .start_mask_i(warp_active_mask_i),
-    .start_grid_x_i(csr_launch_grid_x),
-    .start_block_x_i(csr_launch_block_x),
-    .fetch_accept_i(fetch_req_fire),
+    .issue_ready_i(accept_dec && !USE_EXTERNAL_INSTR),
     .branch_valid_i(branch_taken && !USE_EXTERNAL_INSTR),
     .branch_warp_i(branch_warp),
     .branch_pc_i(branch_target),
@@ -468,18 +431,11 @@ module cu_top #(
     .halt_valid_i(sched_halt_valid),
     .halt_warp_i(sched_halt_warp),
     .halt_mask_i(sched_halt_mask),
-    .halt_pending_i(sched_halt_pending),
-    .halt_pending_warp_i(sched_halt_pending_warp),
     .warp_stall_mask_i(sched_stall_mask),
-    .epoch_query_warp_i(fetch_tag_warp_q),
     .fetch_valid_o(sched_fetch_valid),
     .fetch_warp_o(sched_fetch_warp),
     .fetch_pc_o(sched_fetch_pc),
     .fetch_active_mask_o(sched_fetch_mask),
-    .fetch_ctaid_x_o(sched_fetch_ctaid_x),
-    .fetch_warpid_o(sched_fetch_warpid),
-    .fetch_epoch_o(sched_fetch_epoch),
-    .epoch_query_o(sched_epoch_query),
     .live_warps_o(sched_live_warps),
     .all_warps_done_o(sched_all_done)
   );
@@ -490,66 +446,13 @@ module cu_top #(
       instr_src_data  = instr_i;
       instr_src_warp  = '0;
       instr_src_mask  = current_active_mask_q;
-      instr_src_ctaid_x = 32'd0;
-      instr_src_warpid = 32'd0;
-      instr_src_epoch = 8'd0;
       pc_q            = 16'd0;
     end else begin
-      instr_src_valid = fetch_resp_valid && gpu_running_q;
+      instr_src_valid = sched_fetch_valid && gpu_running_q;
       instr_src_data  = imem_data;
-      instr_src_warp  = fetch_tag_warp_q;
-      instr_src_mask  = fetch_tag_mask_q;
-      instr_src_ctaid_x = fetch_tag_ctaid_x_q;
-      instr_src_warpid = fetch_tag_warpid_q;
-      instr_src_epoch = fetch_tag_epoch_q;
-      pc_q            = fetch_tag_pc_q;
-    end
-  end
-
-  assign fetch_req_fire = !USE_EXTERNAL_INSTR && gpu_running_q && sched_fetch_valid &&
-      !fetch_tag_valid_q && !pipeline_flush;
-  assign fetch_resp_epoch_match = (fetch_tag_epoch_q == sched_epoch_query);
-  assign fetch_resp_valid = fetch_tag_valid_q && fetch_tag_data_ready_q && fetch_resp_epoch_match;
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      fetch_tag_valid_q <= 1'b0;
-      fetch_tag_data_ready_q <= 1'b0;
-      fetch_tag_warp_q <= '0;
-      fetch_tag_pc_q <= 16'd0;
-      fetch_tag_mask_q <= 32'd0;
-      fetch_tag_ctaid_x_q <= 32'd0;
-      fetch_tag_warpid_q <= 32'd0;
-      fetch_tag_epoch_q <= 8'd0;
-    end else if (csr_start_pulse) begin
-      fetch_tag_valid_q <= 1'b0;
-      fetch_tag_data_ready_q <= 1'b0;
-    end else begin
-      if (fetch_tag_valid_q && !fetch_tag_data_ready_q) begin
-        fetch_tag_data_ready_q <= 1'b1;
-      end
-      if (fetch_tag_valid_q && !fetch_resp_epoch_match) begin
-        fetch_tag_valid_q <= 1'b0;
-        fetch_tag_data_ready_q <= 1'b0;
-      end
-      if (pipeline_flush && fetch_tag_valid_q && (fetch_tag_warp_q == branch_warp)) begin
-        fetch_tag_valid_q <= 1'b0;
-        fetch_tag_data_ready_q <= 1'b0;
-      end
-      if (fetch_resp_valid && accept_dec) begin
-        fetch_tag_valid_q <= 1'b0;
-        fetch_tag_data_ready_q <= 1'b0;
-      end
-      if (fetch_req_fire) begin
-        fetch_tag_valid_q <= 1'b1;
-        fetch_tag_data_ready_q <= 1'b0;
-        fetch_tag_warp_q <= sched_fetch_warp;
-        fetch_tag_pc_q <= sched_fetch_pc;
-        fetch_tag_mask_q <= sched_fetch_mask;
-        fetch_tag_ctaid_x_q <= sched_fetch_ctaid_x;
-        fetch_tag_warpid_q <= sched_fetch_warpid;
-        fetch_tag_epoch_q <= sched_fetch_epoch;
-      end
+      instr_src_warp  = sched_fetch_warp;
+      instr_src_mask  = sched_fetch_mask;
+      pc_q            = sched_fetch_pc;
     end
   end
 
@@ -612,8 +515,6 @@ module cu_top #(
   assign issue_ready_eff = issue_ready_i && !lsu_busy && !ex_is_lsu_op &&
       !mma_busy && !fpu_busy && !sfu_busy && !coll_busy;
   assign issue_fire = issue_valid && issue_ready_eff;
-  assign halt_inflight = (issue_busy && (aec_opcode_e'(issue_opcode_q) == AEC_OP_HALT)) ||
-      (ex_valid && (aec_opcode_e'(ex_opcode) == AEC_OP_HALT));
   assign accept_dec = dec_valid && !id_illegal_opcode && !scoreboard_hazard &&
       dec_ready && active_mask_ready_q && !pipeline_flush;
   assign instr_ready_o = USE_EXTERNAL_INSTR ? (dec_ready && active_mask_ready_q) : 1'b0;
@@ -710,8 +611,6 @@ module cu_top #(
       issue_pc_q       <= 16'd0;
       issue_warp_q     <= '0;
       issue_logical_active_mask_q <= 32'd0;
-      issue_ctaid_x_q <= 32'd0;
-      issue_warpid_q <= 32'd0;
     end else if (pipeline_flush) begin
       issue_opcode_q   <= AEC_OP_NOP;
       issue_dst_reg_q  <= 8'd0;
@@ -732,8 +631,6 @@ module cu_top #(
       issue_pc_q       <= 16'd0;
       issue_warp_q     <= '0;
       issue_logical_active_mask_q <= 32'd0;
-      issue_ctaid_x_q <= 32'd0;
-      issue_warpid_q <= 32'd0;
     end else if (accept_dec) begin
       issue_opcode_q   <= decoded_opcode;
       issue_dst_reg_q  <= dst_reg;
@@ -754,8 +651,6 @@ module cu_top #(
       issue_pc_q       <= pc_q;
       issue_warp_q     <= instr_src_warp;
       issue_logical_active_mask_q <= instr_src_mask;
-      issue_ctaid_x_q <= instr_src_ctaid_x;
-      issue_warpid_q <= instr_src_warpid;
     end
   end
 
@@ -1036,9 +931,6 @@ module cu_top #(
     .pred_enable_i(issue_pred_enable_q),
     .predicate_mask_i(issue_predicate_mask),
     .logical_active_mask_i(issue_logical_active_mask_q),
-    .issue_ctaid_x_i(issue_ctaid_x_q),
-    .issue_warpid_i(issue_warpid_q),
-    .issue_nctaid_x_i(csr_launch_grid_x),
     .issue_pc_i(issue_pc_q),
     .src2_imm_i(issue_src2_imm_q),
     .src3_imm_i(issue_src3_imm_q),
@@ -1077,14 +969,7 @@ module cu_top #(
   assign barrier_expected_warps = ex_src2_imm[15:0];
   assign fence_arrive_valid = !USE_EXTERNAL_INSTR && ex_valid && (ex_beat == 2'd0) &&
       (aec_opcode_e'(ex_opcode) == AEC_OP_FENCE);
-  always_comb begin
-    sched_stall_mask = barrier_stalled_q | fence_stalled_q;
-    // A warp is single-issue and in-order: do not fetch PC+1 until all four
-    // physical beats of its current instruction have entered the pipeline.
-    if (issue_busy) begin
-      sched_stall_mask[issue_warp_q] = 1'b1;
-    end
-  end
+  assign sched_stall_mask = barrier_stalled_q | fence_stalled_q;
 
   barrier_unit #(
     .NUM_WARPS(NUM_WARPS),
@@ -1221,9 +1106,6 @@ module cu_top #(
     sched_halt_warp  = ex_warp;
     sched_halt_mask  = 32'd0;
     sched_halt_mask[ex_beat * PHYSICAL_SIMD_LANES +: PHYSICAL_SIMD_LANES] = ex_active_mask;
-    sched_halt_pending = !USE_EXTERNAL_INSTR && accept_dec &&
-        (aec_opcode_e'(decoded_opcode) == AEC_OP_HALT);
-    sched_halt_pending_warp = instr_src_warp;
   end
 
   always_comb begin
@@ -1246,11 +1128,10 @@ module cu_top #(
     fault_code  = AEC_FAULT_NONE;
     fault_pc    = 16'd0;
     fault_meta  = 32'd0;
-    if (id_illegal_opcode && !halt_inflight) begin
+    if (id_illegal_opcode) begin
       fault_valid = 1'b1;
       fault_code  = AEC_FAULT_ILLEGAL_INSTRUCTION;
       fault_pc    = pc_q;
-      fault_meta  = {16'd0, instr_src_data[127:112]};
     end else if (mma_fault_valid) begin
       fault_valid = 1'b1;
       fault_code  = mma_fault_code;

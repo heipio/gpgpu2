@@ -12,7 +12,6 @@ set script_dir [file dirname [file normalize [info script]]]
 set repo_dir [file dirname $script_dir]
 set rtl_dir [file join $repo_dir rtl]
 set kernel_xml [file join $script_dir kernel.xml]
-set sfu_xdc [file join $rtl_dir aec_sfu_multicycle.xdc]
 
 set rtl_sources {
   aec_pkg.sv
@@ -63,7 +62,6 @@ foreach src $rtl_sources {
   require_file [file join $rtl_dir $src]
 }
 require_file $kernel_xml
-require_file $sfu_xdc
 
 if {[llength $argv] > 0 && [lindex $argv 0] eq "--check-only"} {
   puts "AEC Vitis package check passed"
@@ -98,11 +96,6 @@ foreach src $rtl_sources {
   }
 }
 
-# Package the SFU latency contract with the RTL kernel.  Vitis otherwise sees
-# only the generated IP and does not inherit constraints from rtl/.
-read_xdc $sfu_xdc
-set_property USED_IN {implementation} [get_files $sfu_xdc]
-
 set xci_path [file join $rtl_dir ip fp32_fma aec_fp32_fma aec_fp32_fma.xci]
 if {[file exists $xci_path]} {
   import_ip -files $xci_path
@@ -128,14 +121,14 @@ set_property description {AEC-G SIMT GPGPU RTL kernel wrapper with AXI4-Lite con
 set_property version 1.0 $core
 set clk_intf [ipx::get_bus_interfaces ap_clk -of_objects $core]
 if {[llength $clk_intf] > 0} {
-  set_or_add_bus_parameter $clk_intf FREQ_HZ 180000000
+  set_or_add_bus_parameter $clk_intf FREQ_HZ 200000000
   set_or_add_bus_parameter $clk_intf ASSOCIATED_BUSIF {s_axi_control:m_axi_gmem0:m_axi_gmem1:m_axi_gmem2:m_axi_gmem3}
 }
 foreach bus_name {s_axi_control m_axi_gmem0 m_axi_gmem1 m_axi_gmem2 m_axi_gmem3} {
   set bus_if [ipx::get_bus_interfaces $bus_name -of_objects $core -quiet]
   if {[llength $bus_if] > 0} {
     set_or_add_bus_parameter $bus_if ASSOCIATED_CLOCK ap_clk
-    set_or_add_bus_parameter $bus_if FREQ_HZ 180000000
+    set_or_add_bus_parameter $bus_if FREQ_HZ 200000000
   }
 }
 ipx::update_checksums $core

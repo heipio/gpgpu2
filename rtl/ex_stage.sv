@@ -22,9 +22,6 @@ module ex_stage #(
   input  wire logic        pred_enable_i,
   input  wire logic [7:0]  predicate_mask_i,
   input  wire logic [31:0] logical_active_mask_i,
-  input  wire logic [31:0] issue_ctaid_x_i,
-  input  wire logic [31:0] issue_warpid_i,
-  input  wire logic [31:0] issue_nctaid_x_i,
   input  wire logic [15:0] issue_pc_i,
   input  wire logic [31:0] src2_imm_i,
   input  wire logic [31:0] src3_imm_i,
@@ -77,9 +74,6 @@ module ex_stage #(
   logic        pred_enable_q;
   logic [7:0]  predicate_mask_q;
   logic [31:0] logical_active_mask_q;
-  logic [31:0] ctaid_x_q;
-  logic [31:0] warpid_q;
-  logic [31:0] nctaid_x_q;
   logic [15:0] pc_q;
   logic [31:0] src2_imm_q;
   logic [31:0] src3_imm_q;
@@ -96,10 +90,6 @@ module ex_stage #(
   logic [15:0] calc_pc_q;
   logic [31:0] calc_src2_imm_q;
   logic [31:0] calc_src3_imm_q;
-  logic [31:0] calc_logical_active_mask_q;
-  logic [31:0] calc_ctaid_x_q;
-  logic [31:0] calc_warpid_q;
-  logic [31:0] calc_nctaid_x_q;
   logic [7:0][31:0] calc_src1_data_q;
   logic [7:0][31:0] calc_src2_data_q;
   logic [7:0][31:0] calc_src3_data_q;
@@ -138,10 +128,6 @@ module ex_stage #(
   logic [NUM_WARPS-1:0] stack_overflow;
   logic [NUM_WARPS-1:0] stack_underflow;
   localparam logic [15:0] AEC_SR_LANEID = 16'h0100;
-  localparam logic [15:0] AEC_SR_WARPID = 16'h0101;
-  localparam logic [15:0] AEC_SR_CTAID_X = 16'h0102;
-  localparam logic [15:0] AEC_SR_NCTAID_X = 16'h0103;
-  localparam logic [15:0] AEC_SR_ACTIVEMASK = 16'h0104;
   localparam logic [15:0] AEC_SRC_IMM   = 16'hffff;
 
   function automatic logic is_control_op(input logic [15:0] opcode);
@@ -214,9 +200,6 @@ module ex_stage #(
       pred_enable_q  <= 1'b0;
       predicate_mask_q <= 8'hff;
       logical_active_mask_q <= 32'd0;
-      ctaid_x_q <= 32'd0;
-      warpid_q <= 32'd0;
-      nctaid_x_q <= 32'd0;
       pc_q          <= 16'd0;
       src2_imm_q    <= 32'd0;
       src3_imm_q    <= 32'd0;
@@ -233,10 +216,6 @@ module ex_stage #(
       calc_pc_q          <= 16'd0;
       calc_src2_imm_q    <= 32'd0;
       calc_src3_imm_q    <= 32'd0;
-      calc_logical_active_mask_q <= 32'd0;
-      calc_ctaid_x_q <= 32'd0;
-      calc_warpid_q <= 32'd0;
-      calc_nctaid_x_q <= 32'd0;
       calc_src1_data_q   <= '0;
       calc_src2_data_q   <= '0;
       calc_src3_data_q   <= '0;
@@ -269,9 +248,6 @@ module ex_stage #(
       pred_enable_q  <= pred_enable_i;
       predicate_mask_q <= predicate_mask_i;
       logical_active_mask_q <= logical_active_mask_i;
-      ctaid_x_q <= issue_ctaid_x_i;
-      warpid_q <= issue_warpid_i;
-      nctaid_x_q <= issue_nctaid_x_i;
       pc_q          <= issue_pc_i;
       src2_imm_q    <= src2_imm_i;
       src3_imm_q    <= src3_imm_i;
@@ -289,10 +265,6 @@ module ex_stage #(
       calc_pc_q          <= pc_q;
       calc_src2_imm_q    <= src2_imm_q;
       calc_src3_imm_q    <= src3_imm_q;
-      calc_logical_active_mask_q <= logical_active_mask_q;
-      calc_ctaid_x_q <= ctaid_x_q;
-      calc_warpid_q <= warpid_q;
-      calc_nctaid_x_q <= nctaid_x_q;
       calc_src1_data_q   <= src1_data_i;
       calc_src2_data_q   <= src2_data_i;
       calc_src3_data_q   <= src3_data_i;
@@ -455,22 +427,6 @@ module ex_stage #(
       if (calc_src1_sel_q == AEC_SR_LANEID) begin
         for (int result_lane = 0; result_lane < PHYSICAL_SIMD_LANES; result_lane = result_lane + 1) begin
           result_mux[result_lane] = {27'd0, calc_beat_q, result_lane[2:0]};
-        end
-      end else if (calc_src1_sel_q == AEC_SR_WARPID) begin
-        for (int result_lane = 0; result_lane < PHYSICAL_SIMD_LANES; result_lane = result_lane + 1) begin
-          result_mux[result_lane] = calc_warpid_q;
-        end
-      end else if (calc_src1_sel_q == AEC_SR_CTAID_X) begin
-        for (int result_lane = 0; result_lane < PHYSICAL_SIMD_LANES; result_lane = result_lane + 1) begin
-          result_mux[result_lane] = calc_ctaid_x_q;
-        end
-      end else if (calc_src1_sel_q == AEC_SR_NCTAID_X) begin
-        for (int result_lane = 0; result_lane < PHYSICAL_SIMD_LANES; result_lane = result_lane + 1) begin
-          result_mux[result_lane] = calc_nctaid_x_q;
-        end
-      end else if (calc_src1_sel_q == AEC_SR_ACTIVEMASK) begin
-        for (int result_lane = 0; result_lane < PHYSICAL_SIMD_LANES; result_lane = result_lane + 1) begin
-          result_mux[result_lane] = calc_logical_active_mask_q;
         end
       end else if (calc_src1_sel_q == AEC_SRC_IMM) begin
         for (int result_lane = 0; result_lane < PHYSICAL_SIMD_LANES; result_lane = result_lane + 1) begin

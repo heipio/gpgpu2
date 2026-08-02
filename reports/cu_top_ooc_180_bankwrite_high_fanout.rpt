@@ -1,0 +1,31 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2023.1 (lin64) Build 3865809 Sun May  7 15:04:56 MDT 2023
+| Date         : Sun Aug  2 13:18:05 2026
+| Host         : localhost.localdomain running 64-bit CentOS Linux release 7.9.2009 (Core)
+| Command      : report_high_fanout_nets -fanout_greater_than 32 -file cu_top_ooc_high_fanout.rpt
+| Design       : cu_top
+| Device       : xcu280
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+High Fan-out Nets Information
+
+1. Summary
+----------
+
++-------------------------------------------------+--------+-------------+
+| Net Name                                        | Fanout | Driver Type |
++-------------------------------------------------+--------+-------------+
+| u_sfu_core/g_sfu_lane[0].u_sfu_lane/rst_ni_0    |  12727 | LUT1        |
+| u_mma_core/Q[0]                                 |  10264 | FDCE        |
+| u_mma_core/Q[1]                                 |  10263 | FDCE        |
+| u_warp_collective_core/local_rst_ni_inst__1_n_0 |   2625 | LUT1        |
+| u_sfu_core/launch_q_reg_n_0                     |   1556 | FDCE        |
+| u_warp_collective_core/state_q[2]               |   1066 | FDPE        |
+| u_scoreboard/pending_q[3][0][15]_i_2_n_0        |   1024 | LUT1        |
+| u_warp_collective_core/out_val_q[0][31]_i_1_n_0 |   1024 | LUT5        |
+| u_lsu/is_load_q                                 |    806 | LUT2        |
+| u_issue_stage/FSM_onehot_state_q_reg[0][0]      |    805 | LUT2        |
++-------------------------------------------------+--------+-------------+
+
+
